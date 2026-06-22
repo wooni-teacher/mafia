@@ -1,0 +1,2277 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎭 마피아 게임</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; }
+
+    .container { max-width: 480px; margin: 0 auto; padding: 20px; }
+    h1 { text-align: center; font-size: 2rem; margin-bottom: 24px; color: #e94560; text-shadow: 0 0 20px rgba(233,69,96,0.5); }
+
+    .card { background: #16213e; border-radius: 12px; padding: 20px; margin-bottom: 16px; border: 1px solid #0f3460; }
+    .card h2 { margin-bottom: 12px; font-size: 1.1rem; color: #a8b2d8; }
+
+    input[type="text"], input[type="number"], input[type="password"] {
+      width: 100%; padding: 10px 14px; border-radius: 8px;
+      border: 1px solid #0f3460; background: #0f3460; color: #eee;
+      font-size: 1rem; margin-bottom: 10px; outline: none; transition: border 0.2s;
+    }
+    input:focus { border-color: #e94560; }
+    input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: all 0.2s; width: 100%; }
+    .btn-primary   { background: #e94560; color: #fff; }
+    .btn-primary:hover   { background: #c73652; transform: translateY(-1px); }
+    .btn-secondary { background: #0f3460; color: #eee; }
+    .btn-secondary:hover { background: #1a4a7a; }
+    .btn-admin  { background: #6c3483; color: #fff; }
+    .btn-admin:hover  { background: #7d3c98; transform: translateY(-1px); }
+    .btn-gm     { background: #1a6b3c; color: #fff; }
+    .btn-gm:hover     { background: #1e8449; transform: translateY(-1px); }
+    .btn-test   { background: #0e6b8a; color: #fff; }
+    .btn-test:hover   { background: #1a8aad; transform: translateY(-1px); }
+    .btn-small  { width: auto; padding: 6px 14px; font-size: 0.85rem; }
+    .btn-danger { background: #8b0000; color: #fff; }
+    .btn-danger:hover { background: #a00000; }
+    .btn-warning { background: #d68910; color: #fff; }
+    .btn-warning:hover { background: #f39c12; }
+    .btn-ghost  { background: #2a2a4a; color: #9b9bc0; border: 1px solid #4a4a6a; }
+    .btn-ghost:hover  { background: #3a3a6a; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* 이벤트 배너 */
+    .event-banner {
+      position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
+      background: #16213e; border: 2px solid #e94560;
+      border-radius: 12px; padding: 14px 24px;
+      font-size: 1rem; font-weight: bold;
+      z-index: 600; text-align: center;
+      animation: bannerIn 0.4s ease;
+      max-width: 90vw; box-shadow: 0 4px 20px rgba(233,69,96,0.3);
+    }
+    .event-banner.info    { border-color: #3498db; }
+    .event-banner.success { border-color: #2ecc71; }
+    .event-banner.warning { border-color: #f39c12; }
+    .event-banner.danger  { border-color: #e74c3c; }
+    .event-banner.night   { border-color: #7f8c8d; background: #0d0d1a; }
+    @keyframes bannerIn { from{top:40px;opacity:0} to{top:70px;opacity:1} }
+
+    /* 페이즈 배너 */
+    .phase-banner {
+      text-align: center; padding: 20px; border-radius: 12px;
+      margin-bottom: 16px; font-size: 1.3rem; font-weight: bold;
+      animation: fadeIn 0.5s ease;
+    }
+    .phase-banner.day   { background: linear-gradient(135deg,#f39c12,#e67e22); color: #000; }
+    .phase-banner.night { background: linear-gradient(135deg,#1a1a2e,#2c3e50); color: #a8b2d8; border: 1px solid #4a4a6a; }
+    .phase-banner.vote  { background: linear-gradient(135deg,#8b0000,#e74c3c); color: #fff; }
+    @keyframes fadeIn { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
+
+    /* 강퇴 화면 */
+    .kick-notice {
+      background: #16213e; border: 2px solid #e74c3c;
+      border-radius: 16px; padding: 40px 30px;
+      text-align: center; max-width: 400px; width: 90%;
+    }
+
+    /* 테스트 모드 */
+    .test-container { max-width: 900px; margin: 0 auto; padding: 16px; }
+    .test-header { display: flex; justify-content: space-between; align-items: center; background: #0e2a38; border: 1px solid #0e6b8a; padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+    .test-badge { background: #0e6b8a; color: #fff; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; }
+    .test-speed-control { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+    .test-speed-control select { background: #0f3460; color: #eee; border: 1px solid #0e6b8a; border-radius: 6px; padding: 4px 8px; font-size: 0.85rem; }
+    .test-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media(max-width:600px) { .test-grid { grid-template-columns: 1fr; } }
+    .test-section { background: #16213e; border-radius: 12px; padding: 16px; border: 1px solid #0e6b8a; }
+    .test-section h3 { color: #4fc3f7; margin-bottom: 12px; font-size: 1rem; }
+    .ai-player-list { display: flex; flex-direction: column; gap: 6px; }
+    .ai-player-item { background: #0f3460; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; border: 1px solid transparent; transition: all 0.3s; }
+    .ai-player-item.dead { opacity: 0.4; }
+    .ai-info { display: flex; flex-direction: column; gap: 2px; }
+    .ai-name { font-size: 0.9rem; font-weight: bold; }
+    .ai-role { font-size: 0.75rem; }
+    .ai-status { font-size: 0.75rem; color: #a8b2d8; font-style: italic; }
+    .vote-bar-wrap { margin-bottom: 8px; }
+    .vote-bar-label { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 3px; }
+    .vote-bar-bg { background: #0f3460; border-radius: 4px; height: 8px; }
+    .vote-bar-fill { background: #e94560; border-radius: 4px; height: 8px; transition: width 0.5s; }
+    .test-log { height: 220px; overflow-y: auto; background: #0a0a1a; border-radius: 8px; padding: 10px; font-size: 0.82rem; }
+    .log-entry { margin-bottom: 5px; line-height: 1.4; padding: 3px 0; border-bottom: 1px solid #0f3460; }
+    .log-entry:last-child { border-bottom: none; }
+    .log-day     { color: #f39c12; }
+    .log-night   { color: #7f8c8d; }
+    .log-vote    { color: #e94560; }
+    .log-system  { color: #a8b2d8; font-style: italic; }
+    .log-mafia   { color: #e74c3c; }
+    .log-citizen { color: #3498db; }
+    .log-special { color: #2ecc71; }
+    .log-win     { color: #ffd700; font-weight: bold; font-size: 0.95rem; }
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat-item { background: #0f3460; border-radius: 8px; padding: 10px; text-align: center; }
+    .stat-value { font-size: 1.4rem; font-weight: bold; color: #e94560; }
+    .stat-label { font-size: 0.75rem; color: #a8b2d8; margin-top: 2px; }
+    .test-result-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 200; }
+    .test-result-content { background: #16213e; border-radius: 16px; padding: 30px; max-width: 480px; width: 90%; text-align: center; border: 2px solid #0e6b8a; }
+    .result-emoji { font-size: 3rem; margin-bottom: 8px; }
+    .test-result-content h2 { font-size: 1.6rem; margin-bottom: 12px; color: #4fc3f7; }
+    .result-player-list { margin: 16px 0; text-align: left; }
+    .result-player-row { display: flex; justify-content: space-between; padding: 6px 10px; background: #0f3460; border-radius: 6px; margin-bottom: 5px; font-size: 0.88rem; }
+    .result-btn-row { display: flex; gap: 10px; margin-top: 16px; }
+    .test-setup { max-width: 480px; margin: 0 auto; padding: 20px; }
+
+    /* 관리자 */
+    .admin-container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .admin-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .admin-badge { background: #6c3483; color: #fff; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; }
+    .gm-badge    { background: #1a6b3c; color: #fff; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; }
+    .role-setting-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .role-setting-item { background: #0f3460; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .role-setting-label { font-size: 0.9rem; font-weight: bold; }
+    .role-setting-label.citizen    { color: #3498db; }
+    .role-setting-label.mafia      { color: #e74c3c; }
+    .role-setting-label.mafia_boss { color: #c0392b; }
+    .role-setting-label.doctor     { color: #2ecc71; }
+    .role-setting-label.police     { color: #f39c12; }
+    .role-setting-label.jester     { color: #9b59b6; }
+    .role-count-control { display: flex; align-items: center; gap: 8px; }
+    .count-btn { width: 28px; height: 28px; border: none; border-radius: 6px; background: #1a1a2e; color: #eee; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+    .count-btn:hover { background: #e94560; }
+    .count-display { font-size: 1.2rem; font-weight: bold; min-width: 24px; text-align: center; }
+    .total-display { background: #0f3460; border-radius: 10px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .total-count         { font-size: 1.4rem; font-weight: bold; }
+    .total-count.valid   { color: #2ecc71; }
+    .total-count.invalid { color: #e74c3c; }
+    .limit-setting { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .limit-setting label { font-size: 0.9rem; color: #a8b2d8; white-space: nowrap; }
+    .limit-setting input { margin-bottom: 0; width: 80px; }
+    .preset-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .preset-btn { padding: 6px 14px; background: #0f3460; border: 1px solid #a8b2d8; border-radius: 8px; color: #eee; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+    .preset-btn:hover { background: #6c3483; border-color: #6c3483; }
+    .warning-msg { background: #3d1a00; border: 1px solid #e67e22; border-radius: 8px; padding: 10px 14px; font-size: 0.85rem; color: #e67e22; margin-bottom: 12px; }
+    .success-msg { background: #0d3b1e; border: 1px solid #2ecc71; border-radius: 8px; padding: 10px 14px; font-size: 0.85rem; color: #2ecc71; margin-bottom: 12px; }
+
+    /* 대기실 */
+    .room-code-display { font-size: 1.3rem; font-weight: bold; color: #e94560; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .player-list { margin-bottom: 16px; }
+    .player-item { padding: 8px 12px; background: #0f3460; border-radius: 8px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+    .crown { color: #ffd700; }
+    .me-badge { background: #e94560; color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; }
+    .waiting-msg { color: #a8b2d8; font-size: 0.9rem; text-align: center; }
+
+    /* 게임 화면 */
+    .game-container { max-width: 700px; margin: 0 auto; padding: 16px; }
+    .game-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; background: #16213e; padding: 12px 16px; border-radius: 12px; flex-wrap: wrap; gap: 8px; }
+    .phase-badge { padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; }
+    .phase-day    { background: #f39c12; color: #000; }
+    .phase-night  { background: #2c3e50; color: #a8b2d8; }
+    .phase-vote   { background: #e74c3c; color: #fff; }
+    .phase-result { background: #27ae60; color: #fff; }
+    .day-count { font-size: 1rem; color: #a8b2d8; }
+    .timer { font-size: 1.4rem; font-weight: bold; color: #e94560; min-width: 40px; text-align: center; }
+    .timer.urgent { color: #ff0000; animation: pulse 0.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .my-role-card { background: #16213e; border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 2px solid #0f3460; text-align: center; }
+    .role-label { color: #a8b2d8; font-size: 0.85rem; margin-bottom: 4px; }
+    .role-name  { font-size: 1.8rem; font-weight: bold; margin: 8px 0; }
+    .role-citizen    { color: #3498db; }
+    .role-mafia      { color: #e74c3c; }
+    .role-mafia_boss { color: #c0392b; }
+    .role-doctor     { color: #2ecc71; }
+    .role-police     { color: #f39c12; }
+    .role-jester     { color: #9b59b6; }
+    .role-desc { font-size: 0.85rem; color: #a8b2d8; }
+    .mafia-team-info { margin-top: 8px; padding: 8px; background: #3d0000; border-radius: 8px; font-size: 0.85rem; color: #ff6b6b; }
+
+    .section-card { background: #16213e; border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid #0f3460; }
+    .section-card h3 { margin-bottom: 12px; color: #a8b2d8; }
+
+    .player-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+    .player-card { background: #0f3460; border-radius: 10px; padding: 10px; text-align: center; cursor: default; transition: all 0.2s; border: 2px solid transparent; }
+    .player-card.votable { cursor: pointer; }
+    .player-card.votable:hover { border-color: #e94560; transform: scale(1.03); }
+    .player-card.dead     { opacity: 0.4; }
+    .player-card.selected { border-color: #e94560; background: #3d0020; }
+    .player-card.me       { border-color: #3498db; }
+    .player-avatar { font-size: 1.8rem; }
+    .player-name   { font-size: 0.8rem; margin-top: 4px; word-break: break-all; }
+    .me-tag { font-size: 0.7rem; background: #3498db; color: #fff; border-radius: 8px; padding: 1px 6px; margin-top: 2px; display: inline-block; }
+
+    .action-panel    { border-color: #e94560 !important; }
+    .action-panel h3 { color: #e94560 !important; }
+    .action-hint     { font-size: 0.8rem; color: #a8b2d8; margin-bottom: 10px; }
+    .target-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .target-btn { padding: 8px 16px; background: #0f3460; border: 1px solid #a8b2d8; border-radius: 8px; color: #eee; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; }
+    .target-btn:hover     { background: #e94560; border-color: #e94560; }
+    .target-btn.confirmed { background: #27ae60; border-color: #27ae60; }
+    .target-btn:disabled  { opacity: 0.5; cursor: not-allowed; }
+
+    .investigate-result    { border-color: #f39c12 !important; text-align: center; font-weight: bold; }
+    .investigate-result h3 { color: #f39c12 !important; }
+
+    /* 채팅 */
+    .chat-box { height: 180px; overflow-y: auto; background: #0a0a1a; border-radius: 8px; padding: 10px; margin-bottom: 8px; font-size: 0.85rem; }
+    .chat-msg              { margin-bottom: 6px; line-height: 1.4; }
+    .chat-msg .sender      { font-weight: bold; color: #e94560; }
+    .chat-msg.system       { color: #a8b2d8; font-style: italic; }
+    .chat-msg.event-kill   { color: #e74c3c; font-weight: bold; }
+    .chat-msg.event-save   { color: #2ecc71; font-weight: bold; }
+    .chat-msg.event-vote   { color: #f39c12; font-weight: bold; }
+    .chat-msg.event-phase  { color: #4fc3f7; font-weight: bold; }
+    .chat-msg.gm-msg .sender { color: #2ecc71; }
+    .chat-msg.dead-msg .sender { color: #9b9bc0; }
+    .chat-input-row        { display: flex; gap: 8px; margin-bottom: 6px; }
+    .chat-input-row input  { margin-bottom: 0; flex: 1; }
+
+    .mafia-chat-section    { border-color: #8b0000 !important; }
+    .mafia-chat-section h3 { color: #ff6b6b !important; }
+    .dead-chat-section     { border-color: #4a4a6a !important; background: #0d0d1a !important; }
+    .dead-chat-section h3  { color: #9b9bc0 !important; }
+
+    /* GM */
+    .gm-panel { border-color: #1a6b3c !important; }
+    .gm-panel h3 { color: #2ecc71 !important; }
+    .gm-player-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; margin-bottom: 16px; }
+    .gm-player-card { background: #0f3460; border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; border: 2px solid transparent; }
+    .gm-player-card.dead { opacity: 0.45; }
+    .gm-player-card.mafia-role   { border-color: #e74c3c; }
+    .gm-player-card.special-role { border-color: #f39c12; }
+    .gm-player-info { display: flex; flex-direction: column; gap: 2px; }
+    .gm-player-name { font-size: 0.95rem; font-weight: bold; }
+    .gm-player-role { font-size: 0.78rem; }
+    .gm-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .gm-vote-board  { background: #0a0a1a; border-radius: 8px; padding: 10px; margin-bottom: 12px; font-size: 0.85rem; }
+    .gm-vote-row    { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #0f3460; }
+    .gm-vote-row:last-child { border-bottom: none; }
+    .gm-night-board { background: #0a0a1a; border-radius: 8px; padding: 10px; margin-bottom: 12px; font-size: 0.85rem; }
+    .gm-night-row   { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #0f3460; }
+    .gm-night-row:last-child { border-bottom: none; }
+    .gm-night-label { color: #a8b2d8; }
+    .gm-status-bar  { background: #0d3b1e; border: 1px solid #1a6b3c; border-radius: 10px; padding: 10px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: #2ecc71; }
+
+    /* 역할 색상 */
+    .role-color-citizen    { color: #3498db; }
+    .role-color-mafia      { color: #e74c3c; font-weight: bold; }
+    .role-color-mafia_boss { color: #c0392b; font-weight: bold; }
+    .role-color-doctor     { color: #2ecc71; }
+    .role-color-police     { color: #f39c12; }
+    .role-color-jester     { color: #9b59b6; }
+
+    /* 모달 */
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 100; }
+    .modal-content { background: #16213e; border-radius: 16px; padding: 30px; max-width: 400px; width: 90%; text-align: center; border: 2px solid #e94560; }
+    .game-over-emoji  { font-size: 3rem; margin-bottom: 8px; }
+    .modal-content h2 { font-size: 1.8rem; margin-bottom: 12px; color: #e94560; }
+    .modal-content p  { margin-bottom: 16px; color: #a8b2d8; }
+    .final-player-list { margin-bottom: 16px; }
+    .final-player-row { display: flex; justify-content: space-between; padding: 6px 10px; background: #0f3460; border-radius: 6px; margin-bottom: 6px; font-size: 0.9rem; }
+
+    .admin-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 400; }
+    .admin-modal-content { background: #16213e; border-radius: 16px; padding: 30px; max-width: 360px; width: 90%; border: 2px solid #6c3483; }
+    .admin-modal-content h2 { color: #6c3483; margin-bottom: 16px; text-align: center; }
+
+    .notification { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #e94560; color: #fff; padding: 12px 24px; border-radius: 8px; font-weight: bold; z-index: 500; animation: slideDown 0.3s ease; white-space: nowrap; }
+    @keyframes slideDown { from{top:-50px;opacity:0} to{top:20px;opacity:1} }
+
+    .loading-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 300; gap: 16px; }
+    .spinner { width: 40px; height: 40px; border: 4px solid #0f3460; border-top-color: #e94560; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    .hidden { display: none !important; }
+    .admin-entry { text-align: center; margin-top: 8px; }
+    .admin-entry button { background: none; border: 1px solid #6c3483; color: #9b59b6; padding: 6px 16px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+    .admin-entry button:hover { background: #6c3483; color: #fff; }
+  </style>
+</head>
+<body>
+
+  <!-- 로비 -->
+  <div id="lobby-screen">
+    <div class="container">
+      <h1>🎭 마피아 게임</h1>
+      <div class="card">
+        <h2>닉네임</h2>
+        <input type="text" id="nickname" placeholder="닉네임 입력 (최대 10자)" maxlength="10">
+      </div>
+      <div class="card">
+        <h2>방 만들기 <small style="color:#2ecc71;font-size:0.8rem;">👑 진행자로 참여</small></h2>
+        <button id="createRoom" class="btn btn-primary">방 만들기</button>
+      </div>
+      <div class="card">
+        <h2>방 참가하기</h2>
+        <input type="text" id="roomCode" placeholder="방 코드 6자리" maxlength="6" style="text-transform:uppercase">
+        <button id="joinRoom" class="btn btn-secondary">참가하기</button>
+      </div>
+      <div class="card" style="border-color:#0e6b8a;">
+        <h2 style="color:#4fc3f7;">🤖 AI 테스트 모드</h2>
+        <p style="color:#a8b2d8;font-size:0.85rem;margin-bottom:12px;">AI끼리 게임을 진행하며 규칙을 확인해보세요!</p>
+        <button id="openTestMode" class="btn btn-test">🤖 AI 테스트 시작</button>
+      </div>
+      <div class="admin-entry">
+        <button id="openAdminLogin">⚙️ 관리자</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 테스트 설정 -->
+  <div id="test-setup-screen" class="hidden">
+    <div class="test-setup">
+      <h1>🤖 AI 테스트 모드</h1>
+      <div class="card" style="border-color:#0e6b8a;">
+        <h2 style="color:#4fc3f7;">AI 인원 설정</h2>
+        <div class="limit-setting">
+          <label>AI 플레이어 수</label>
+          <input type="number" id="aiCount" value="6" min="4" max="12" style="width:80px;margin-bottom:0;">
+          <span style="color:#a8b2d8;">명 (4~12)</span>
+        </div>
+      </div>
+      <div class="card" style="border-color:#0e6b8a;">
+        <h2 style="color:#4fc3f7;">역할 설정</h2>
+        <div class="preset-btns">
+          <button class="preset-btn" onclick="applyTestPreset(4)">4인</button>
+          <button class="preset-btn" onclick="applyTestPreset(6)">6인</button>
+          <button class="preset-btn" onclick="applyTestPreset(8)">8인</button>
+          <button class="preset-btn" onclick="applyTestPreset(10)">10인</button>
+        </div>
+        <div class="role-setting-grid">
+          <div class="role-setting-item"><div class="role-setting-label mafia">🔫 마피아</div><div class="role-count-control"><button class="count-btn" onclick="changeTestRole('mafia',-1)">−</button><span class="count-display" id="test-count-mafia">1</span><button class="count-btn" onclick="changeTestRole('mafia',1)">+</button></div></div>
+          <div class="role-setting-item"><div class="role-setting-label mafia_boss">😈 마피아 보스</div><div class="role-count-control"><button class="count-btn" onclick="changeTestRole('mafia_boss',-1)">−</button><span class="count-display" id="test-count-mafia_boss">1</span><button class="count-btn" onclick="changeTestRole('mafia_boss',1)">+</button></div></div>
+          <div class="role-setting-item"><div class="role-setting-label doctor">👨‍⚕️ 의사</div><div class="role-count-control"><button class="count-btn" onclick="changeTestRole('doctor',-1)">−</button><span class="count-display" id="test-count-doctor">1</span><button class="count-btn" onclick="changeTestRole('doctor',1)">+</button></div></div>
+          <div class="role-setting-item"><div class="role-setting-label police">🕵️ 경찰</div><div class="role-count-control"><button class="count-btn" onclick="changeTestRole('police',-1)">−</button><span class="count-display" id="test-count-police">1</span><button class="count-btn" onclick="changeTestRole('police',1)">+</button></div></div>
+          <div class="role-setting-item"><div class="role-setting-label jester">🃏 광대</div><div class="role-count-control"><button class="count-btn" onclick="changeTestRole('jester',-1)">−</button><span class="count-display" id="test-count-jester">1</span><button class="count-btn" onclick="changeTestRole('jester',1)">+</button></div></div>
+          <div class="role-setting-item"><div class="role-setting-label citizen">👤 시민</div><div class="role-count-control"><button class="count-btn" onclick="changeTestRole('citizen',-1)">−</button><span class="count-display" id="test-count-citizen">1</span><button class="count-btn" onclick="changeTestRole('citizen',1)">+</button></div></div>
+        </div>
+        <div class="total-display">
+          <span>총 역할 합계</span>
+          <span id="testTotalCount" class="total-count valid">6명</span>
+        </div>
+      </div>
+      <div class="card" style="border-color:#0e6b8a;">
+        <h2 style="color:#4fc3f7;">⏱️ 진행 속도</h2>
+        <select id="testSpeed" style="background:#0f3460;color:#eee;border:1px solid #0e6b8a;border-radius:8px;padding:8px 12px;font-size:0.9rem;width:100%;">
+          <option value="3000">🐢 느리게 (3초)</option>
+          <option value="1500" selected>🚶 보통 (1.5초)</option>
+          <option value="700">🏃 빠르게 (0.7초)</option>
+          <option value="200">⚡ 매우 빠르게 (0.2초)</option>
+        </select>
+      </div>
+      <button id="startTestGame" class="btn btn-test">🤖 AI 게임 시작!</button>
+      <br><br>
+      <button id="backFromTestSetup" class="btn btn-secondary">← 뒤로</button>
+    </div>
+  </div>
+
+  <!-- AI 테스트 화면 -->
+  <div id="test-screen" class="hidden">
+    <div class="test-container">
+      <div class="test-header">
+        <div id="testPhaseDisplay" class="phase-badge phase-day">☀️ 낮</div>
+        <div id="testDayDisplay" style="color:#a8b2d8;">1일차</div>
+        <div class="test-speed-control">
+          속도: <select id="testSpeedControl">
+            <option value="3000">🐢 느리게</option>
+            <option value="1500" selected>🚶 보통</option>
+            <option value="700">🏃 빠르게</option>
+            <option value="200">⚡ 매우 빠르게</option>
+          </select>
+        </div>
+        <span class="test-badge">🤖 AI 테스트</span>
+      </div>
+      <div class="test-grid">
+        <div>
+          <div class="test-section">
+            <h3>👥 AI 플레이어</h3>
+            <div id="aiPlayerList" class="ai-player-list"></div>
+          </div>
+          <div id="testVoteSection" class="test-section hidden" style="margin-top:12px;">
+            <h3>🗳️ 투표 현황</h3>
+            <div id="testVoteBoard"></div>
+          </div>
+        </div>
+        <div>
+          <div class="test-section">
+            <h3>📋 게임 로그</h3>
+            <div id="testLog" class="test-log"></div>
+          </div>
+          <div class="test-section" style="margin-top:12px;">
+            <h3>📊 통계</h3>
+            <div class="stat-grid">
+              <div class="stat-item"><div id="statDay" class="stat-value">1</div><div class="stat-label">현재 일차</div></div>
+              <div class="stat-item"><div id="statAlive" class="stat-value">-</div><div class="stat-label">생존자</div></div>
+              <div class="stat-item"><div id="statMafia" class="stat-value">-</div><div class="stat-label">마피아 생존</div></div>
+              <div class="stat-item"><div id="statCitizen" class="stat-value">-</div><div class="stat-label">시민 생존</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
+        <button id="testPauseBtn"   class="btn btn-warning btn-small">⏸️ 일시정지</button>
+        <button id="testRestartBtn" class="btn btn-test btn-small">🔄 다시 시작</button>
+        <button id="testBackBtn"    class="btn btn-secondary btn-small">← 설정으로</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 테스트 결과 모달 -->
+  <div id="testResultModal" class="test-result-modal hidden">
+    <div class="test-result-content">
+      <div id="testResultEmoji" class="result-emoji">🎭</div>
+      <h2 id="testResultTitle">게임 종료</h2>
+      <p id="testResultMsg" style="color:#a8b2d8;margin-bottom:8px;"></p>
+      <div id="testResultPlayers" class="result-player-list"></div>
+      <div class="result-btn-row">
+        <button id="testPlayAgain" class="btn btn-test">🔄 다시 플레이</button>
+        <button id="testGoLobby"   class="btn btn-secondary">🏠 로비로</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 관리자 로그인 -->
+  <div id="adminLoginModal" class="admin-modal hidden">
+    <div class="admin-modal-content">
+      <h2>🔐 관리자 로그인</h2>
+      <input type="password" id="adminPassword" placeholder="관리자 비밀번호 입력">
+      <button id="adminLoginBtn" class="btn btn-admin">로그인</button>
+      <br><br>
+      <button id="adminLoginCancel" class="btn btn-secondary">취소</button>
+    </div>
+  </div>
+
+  <!-- 관리자 화면 -->
+  <div id="admin-screen" class="hidden">
+    <div class="admin-container">
+      <div class="admin-header">
+        <h1 style="margin-bottom:0;font-size:1.5rem;">⚙️ 관리자 설정</h1>
+        <span class="admin-badge">ADMIN</span>
+      </div>
+      <div class="card">
+        <h2>👥 인원 제한 설정</h2>
+        <div class="limit-setting"><label>최소 인원</label><input type="number" id="minPlayers" value="4" min="2" max="20"><label>명</label></div>
+        <div class="limit-setting"><label>최대 인원</label><input type="number" id="maxPlayers" value="9" min="2" max="30"><label>명</label></div>
+      </div>
+      <div class="card">
+        <h2>🎭 역할별 인원 설정</h2>
+        <div class="preset-btns">
+          <button class="preset-btn" onclick="applyPreset(4)">4인 프리셋</button>
+          <button class="preset-btn" onclick="applyPreset(6)">6인 프리셋</button>
+          <button class="preset-btn" onclick="applyPreset(8)">8인 프리셋</button>
+          <button class="preset-btn" onclick="applyPreset(10)">10인 프리셋</button>
+        </div>
+        <div class="role-setting-grid">
+          <div class="role-setting-item"><div class="role-setting-label mafia">🔫 마피아</div><div class="role-count-control"><button class="count-btn" onclick="changeRole('mafia',-1)">−</button><span class="count-display" id="count-mafia">1</span><button class="count-btn" onclick="changeRole('mafia',1)">+</button></div></div>
+          <div class="role-setting-item"><div class="role-setting-label mafia_boss">😈 마피아 보스</div><div class="role-count-control"><button class="count-btn" onclick="changeRole('mafia_boss',-1)">−</button><span class="count-display" id="count-mafia_boss">0</span><button class="count-btn" onclick="changeRole('mafia_boss',1)">+</button></div></div>
+          <div class="role-setting-item"><div class="role-setting-label doctor">👨‍⚕️ 의사</div><div class="role-count-control"><button class="count-btn" onclick="changeRole('doctor',-1)">−</button><span class="count-display" id="count-doctor">1</span><button class="count-btn" onclick="changeRole('doctor',1)">+</button></div></div>
+          <div class="role-setting-item"><div class="role-setting-label police">🕵️ 경찰</div><div class="role-count-control"><button class="count-btn" onclick="changeRole('police',-1)">−</button><span class="count-display" id="count-police">1</span><button class="count-btn" onclick="changeRole('police',1)">+</button></div></div>
+          <div class="role-setting-item"><div class="role-setting-label jester">🃏 광대</div><div class="role-count-control"><button class="count-btn" onclick="changeRole('jester',-1)">−</button><span class="count-display" id="count-jester">1</span><button class="count-btn" onclick="changeRole('jester',1)">+</button></div></div>
+          <div class="role-setting-item"><div class="role-setting-label citizen">👤 시민</div><div class="role-count-control"><button class="count-btn" onclick="changeRole('citizen',-1)">−</button><span class="count-display" id="count-citizen">1</span><button class="count-btn" onclick="changeRole('citizen',1)">+</button></div></div>
+        </div>
+        <div class="total-display"><span>총 역할 합계</span><span id="totalRoleCount" class="total-count">5명</span></div>
+        <div id="roleWarning" class="warning-msg hidden"></div>
+      </div>
+      <div class="card">
+        <h2>⏱️ 타이머 설정 (초)</h2>
+        <div class="limit-setting"><label>낮 토론</label><input type="number" id="timerDay" value="30" min="10" max="300"><label>초</label></div>
+        <div class="limit-setting"><label>투표 시간</label><input type="number" id="timerVote" value="20" min="10" max="120"><label>초</label></div>
+        <div class="limit-setting"><label>밤 행동</label><input type="number" id="timerNight" value="25" min="10" max="120"><label>초</label></div>
+      </div>
+      <button id="saveAdminSettings" class="btn btn-admin">💾 설정 저장</button>
+      <br><br>
+      <button id="backFromAdmin" class="btn btn-secondary">← 로비로 돌아가기</button>
+    </div>
+  </div>
+
+  <!-- 대기실 -->
+  <div id="waiting-screen" class="hidden">
+    <div class="container">
+      <h1>🎭 마피아 게임</h1>
+      <div class="card">
+        <h2>대기실</h2>
+        <div class="room-code-display">
+          방 코드: <strong id="roomCodeDisplay">------</strong>
+          <button id="copyCode" class="btn btn-small">📋 복사</button>
+        </div>
+        <div id="playerList" class="player-list"></div>
+        <div id="hostControls" class="hidden">
+          <button id="startGame" class="btn btn-primary" disabled>게임 시작 (최소 4명)</button>
+        </div>
+        <p id="waitingMsg" class="waiting-msg">방장이 게임을 시작하길 기다리는 중...</p>
+        <br>
+        <button id="leaveRoom" class="btn btn-secondary">🚪 방 나가기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GM 화면 -->
+  <div id="gm-screen" class="hidden">
+    <div class="game-container">
+      <div class="game-header">
+        <div id="gmPhaseDisplay" class="phase-badge">대기 중</div>
+        <div id="gmDayDisplay" class="day-count">1일차</div>
+        <div id="gmTimerDisplay" class="timer">--</div>
+        <span class="gm-badge">👑 진행자</span>
+        <button id="leaveGM" class="btn btn-small btn-danger">🚪 나가기</button>
+      </div>
+      <div class="gm-status-bar">👑 진행자 모드 — 모든 역할과 행동을 볼 수 있습니다</div>
+      <div class="section-card gm-panel">
+        <h3>👥 플레이어 역할 현황</h3>
+        <div id="gmPlayerGrid" class="gm-player-grid"></div>
+      </div>
+      <div id="gmVotePanel" class="section-card gm-panel hidden">
+        <h3>🗳️ 실시간 투표 현황</h3>
+        <div id="gmVoteBoard" class="gm-vote-board"></div>
+      </div>
+      <div id="gmNightPanel" class="section-card gm-panel hidden">
+        <h3>🌙 밤 행동 현황</h3>
+        <div id="gmNightBoard" class="gm-night-board"></div>
+      </div>
+      <!-- GM 강퇴 패널 -->
+      <div class="section-card gm-panel">
+        <h3>🚫 플레이어 강퇴</h3>
+        <div id="gmKickList" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+      </div>
+      <div class="section-card gm-panel">
+        <h3>🎮 진행자 컨트롤</h3>
+        <div class="gm-controls">
+          <button id="gmSkipTimer"  class="btn btn-warning btn-small">⏩ 타이머 스킵</button>
+          <button id="gmForceDay"   class="btn btn-gm btn-small">☀️ 낮 강제 전환</button>
+          <button id="gmForceVote"  class="btn btn-gm btn-small">🗳️ 투표 강제 전환</button>
+          <button id="gmForceNight" class="btn btn-gm btn-small">🌙 밤 강제 전환</button>
+          <button id="gmEndGame"    class="btn btn-danger btn-small">🛑 게임 종료</button>
+        </div>
+      </div>
+      <div class="section-card gm-panel">
+        <h3>💬 채팅</h3>
+        <div id="gmChatBox" class="chat-box"></div>
+        <div class="chat-input-row">
+          <input type="text" id="gmChatInput" placeholder="💬 일반 채팅 ([GM] 표시)" maxlength="100">
+          <button id="gmSendChat" class="btn btn-small btn-gm">전송</button>
+        </div>
+        <div class="chat-input-row">
+          <input type="text" id="gmNoticeInput" placeholder="📢 공지 메시지..." maxlength="100">
+          <button id="gmSendNotice" class="btn btn-small btn-warning">공지</button>
+        </div>
+      </div>
+      <div id="gmGameOverModal" class="modal hidden">
+        <div class="modal-content">
+          <div id="gmGameOverEmoji" class="game-over-emoji">🎭</div>
+          <h2 id="gmGameOverTitle">게임 종료</h2>
+          <p id="gmGameOverMessage"></p>
+          <div id="gmFinalPlayerList" class="final-player-list"></div>
+          <button id="gmBackToLobby" class="btn btn-primary">🏠 로비로 돌아가기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 플레이어 게임 화면 -->
+  <div id="game-screen" class="hidden">
+    <div class="game-container">
+      <div class="game-header">
+        <div id="phaseDisplay" class="phase-badge">대기 중</div>
+        <div id="dayDisplay" class="day-count">1일차</div>
+        <div id="timerDisplay" class="timer">--</div>
+        <button id="leaveGame" class="btn btn-small btn-danger">🚪 나가기</button>
+      </div>
+      <div id="phaseBanner" class="phase-banner day hidden"></div>
+      <div class="my-role-card">
+        <div class="role-label">내 역할</div>
+        <div id="myRoleName" class="role-name">-</div>
+        <div id="myRoleDesc" class="role-desc">-</div>
+        <div id="mafiaTeamInfo" class="mafia-team-info hidden"></div>
+      </div>
+      <div class="section-card">
+        <h3>👥 플레이어</h3>
+        <div id="playerGrid" class="player-grid"></div>
+      </div>
+      <div id="nightPanel" class="section-card action-panel hidden">
+        <h3 id="nightActionTitle">행동 선택</h3>
+        <p class="action-hint" id="actionHint"></p>
+        <div id="nightTargets" class="target-list"></div>
+      </div>
+      <div id="investigateResult" class="section-card investigate-result hidden">
+        <h3>🔍 조사 결과</h3>
+        <p id="investigateText"></p>
+      </div>
+      <div class="section-card">
+        <h3>💬 채팅</h3>
+        <div id="chatBox" class="chat-box"></div>
+        <div class="chat-input-row">
+          <input type="text" id="chatInput" placeholder="메시지 입력..." maxlength="100">
+          <button id="sendMsg" class="btn btn-small btn-primary">전송</button>
+        </div>
+      </div>
+      <div id="mafiaChatSection" class="section-card mafia-chat-section hidden">
+        <h3>🔴 마피아 채팅</h3>
+        <div id="mafiaChatBox" class="chat-box"></div>
+        <div class="chat-input-row">
+          <input type="text" id="mafiaChatInput" placeholder="마피아끼리만 보입니다..." maxlength="100">
+          <button id="sendMafiaMsg" class="btn btn-small btn-danger">전송</button>
+        </div>
+      </div>
+      <div id="deadChatSection" class="section-card dead-chat-section hidden">
+        <h3>👻 사망자 채팅 <span style="font-size:0.75rem;color:#a8b2d8;">(사망자끼리만 보입니다)</span></h3>
+        <div id="deadChatBox" class="chat-box"></div>
+        <div class="chat-input-row">
+          <input type="text" id="deadChatInput" placeholder="저승에서 대화하세요..." maxlength="100">
+          <button id="sendDeadMsg" class="btn btn-small btn-ghost">전송</button>
+        </div>
+      </div>
+      <div id="gameOverModal" class="modal hidden">
+        <div class="modal-content">
+          <div id="gameOverEmoji" class="game-over-emoji">🎭</div>
+          <h2 id="gameOverTitle">게임 종료</h2>
+          <p id="gameOverMessage"></p>
+          <div id="finalPlayerList" class="final-player-list"></div>
+          <button id="backToLobby" class="btn btn-primary">🏠 로비로 돌아가기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="loading" class="loading-overlay hidden"><div class="spinner"></div><p>연결 중...</p></div>
+  <div id="notification" class="notification hidden"></div>
+  <div id="eventBanner" class="event-banner hidden"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, get, update, onValue, push, remove, serverTimestamp, onDisconnect }
+      from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getAuth, signInAnonymously }
+      from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD5T4DZsEuH3uGgRCJ4M_CBQjwdOni3S9c",
+      authDomain: "kinball-banwel.firebaseapp.com",
+      databaseURL: "https://kinball-banwel-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "kinball-banwel",
+      storageBucket: "kinball-banwel.firebasestorage.app",
+      messagingSenderId: "623980236959",
+      appId: "1:623980236959:web:ffe9d72af71925751f12aa"
+    };
+
+    const app  = initializeApp(firebaseConfig);
+    const db   = getDatabase(app);
+    const auth = getAuth(app);
+    const ADMIN_PASSWORD = "admin1234";
+
+    let gameSettings = {
+      minPlayers:4, maxPlayers:9,
+      roles:{ mafia:1, mafia_boss:0, doctor:1, police:1, jester:1, citizen:1 },
+      timers:{ day:30, vote:20, night:25 }
+    };
+
+    const roleInfo = {
+      citizen:    { name:'👤 시민',       desc:'토론과 투표로 마피아를 찾아내세요!',    cls:'role-citizen',    color:'role-color-citizen'    },
+      mafia:      { name:'🔫 마피아',      desc:'밤에 시민을 제거하고 정체를 숨기세요!', cls:'role-mafia',      color:'role-color-mafia'      },
+      mafia_boss: { name:'😈 마피아 보스', desc:'경찰 조사를 피하며 팀을 이끄세요!',    cls:'role-mafia_boss', color:'role-color-mafia_boss' },
+      doctor:     { name:'👨‍⚕️ 의사',       desc:'밤에 한 명을 보호할 수 있습니다.',     cls:'role-doctor',     color:'role-color-doctor'     },
+      police:     { name:'🕵️ 경찰',        desc:'밤에 한 명을 조사할 수 있습니다.',     cls:'role-police',     color:'role-color-police'     },
+      jester:     { name:'🃏 광대',        desc:'투표로 추방당하면 승리합니다!',         cls:'role-jester',     color:'role-color-jester'     },
+    };
+
+    const AI_NAMES = ['김철수','이영희','박민준','최수진','정대호','한지민','오세훈','윤아름','강태양','임하늘','신동욱','류미래'];
+
+    const state = {
+      uid:null, roomId:null, nickname:null,
+      myRole:null, phase:null,
+      isHost:false, isGM:false,
+      players:{}, timerInterval:null,
+      hasVoted:false, hasActed:false,
+    };
+
+    const renderedMsgIds      = new Set();
+    const renderedMafiaMsgIds = new Set();
+    const renderedDeadMsgIds  = new Set();
+    const renderedGmMsgIds    = new Set();
+
+    // ════════════════════════════════════════════════════════
+    //  이벤트 배너
+    // ════════════════════════════════════════════════════════
+    let bannerTimeout = null;
+    function showEventBanner(msg, type='info', duration=3500) {
+      const el = document.getElementById('eventBanner');
+      if (!el) return;
+      clearTimeout(bannerTimeout);
+      el.textContent = msg;
+      el.className   = `event-banner ${type}`;
+      el.classList.remove('hidden');
+      bannerTimeout = setTimeout(() => el.classList.add('hidden'), duration);
+    }
+
+    function showPhaseBanner(phase, dayCount) {
+      const el = document.getElementById('phaseBanner');
+      if (!el) return;
+      const texts = {
+        day:   `☀️ ${dayCount}일차 낮 — 마피아를 찾아내세요!`,
+        night: `🌙 ${dayCount}일차 밤 — 각자 역할을 수행하세요`,
+        vote:  `🗳️ 투표 시간 — 마피아를 추방하세요!`,
+      };
+      el.textContent = texts[phase]||'';
+      el.className   = `phase-banner ${phase}`;
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), 3000);
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  AI 테스트 모드
+    // ════════════════════════════════════════════════════════
+    let testState = {
+      players:[], phase:'day', day:1,
+      votes:{}, nightActions:{},
+      running:false, paused:false, speed:1500,
+      policeKnowledge:{},
+    };
+    let testTimeout = null;
+
+    window.changeTestRole = function(role, delta) {
+      const el = document.getElementById(`test-count-${role}`);
+      el.textContent = Math.max(0, parseInt(el.textContent) + delta);
+      updateTestTotal();
+    };
+    window.applyTestPreset = function(count) {
+      const presets = {
+        4:  { mafia:1, mafia_boss:0, doctor:1, police:1, jester:0, citizen:1 },
+        6:  { mafia:1, mafia_boss:1, doctor:1, police:1, jester:1, citizen:1 },
+        8:  { mafia:1, mafia_boss:1, doctor:1, police:1, jester:1, citizen:3 },
+        10: { mafia:2, mafia_boss:1, doctor:1, police:1, jester:1, citizen:4 },
+      };
+      const p = presets[count];
+      if (!p) return;
+      Object.entries(p).forEach(([role, val]) => {
+        const el = document.getElementById(`test-count-${role}`);
+        if (el) el.textContent = val;
+      });
+      document.getElementById('aiCount').value = count;
+      updateTestTotal();
+    };
+    function updateTestTotal() {
+      const roles = ['mafia','mafia_boss','doctor','police','jester','citizen'];
+      const total = roles.reduce((s,r) => {
+        const el = document.getElementById(`test-count-${r}`);
+        return s + (el ? parseInt(el.textContent) : 0);
+      }, 0);
+      const el = document.getElementById('testTotalCount');
+      el.textContent = `${total}명`;
+      el.className   = total >= 4 ? 'total-count valid' : 'total-count invalid';
+    }
+
+    document.getElementById('openTestMode').addEventListener('click', () => showScreen('test-setup-screen'));
+    document.getElementById('backFromTestSetup').addEventListener('click', () => showScreen('lobby-screen'));
+    document.getElementById('startTestGame').addEventListener('click', () => {
+      const count = parseInt(document.getElementById('aiCount').value);
+      if (count < 4 || count > 12) return showNotification('AI 인원은 4~12명이어야 합니다.');
+      const roles = getTestRoles(count);
+      if (!roles) return showNotification('역할 합계가 AI 인원과 맞지 않습니다!');
+      startTestMode(count, roles, parseInt(document.getElementById('testSpeed').value));
+    });
+
+    function getTestRoles(count) {
+      const roleKeys = ['mafia','mafia_boss','doctor','police','jester','citizen'];
+      const roles = [];
+      roleKeys.forEach(r => {
+        const el = document.getElementById(`test-count-${r}`);
+        const n  = el ? parseInt(el.textContent) : 0;
+        for (let i = 0; i < n; i++) roles.push(r);
+      });
+      while (roles.length < count) roles.push('citizen');
+      return roles.slice(0, count).sort(() => Math.random() - 0.5);
+    }
+
+    function startTestMode(count, roles, speed) {
+      const names = [...AI_NAMES].sort(() => Math.random() - 0.5).slice(0, count);
+      testState = {
+        players: names.map((name, i) => ({ id:`ai_${i}`, name, role:roles[i], alive:true, protected:false })),
+        phase:'day', day:1, votes:{}, nightActions:{},
+        running:true, paused:false, speed,
+        policeKnowledge:{},
+      };
+      document.getElementById('testSpeedControl').value = speed;
+      document.getElementById('testLog').innerHTML = '';
+      document.getElementById('testVoteSection').classList.add('hidden');
+      document.getElementById('testPauseBtn').textContent = '⏸️ 일시정지';
+      showScreen('test-screen');
+      renderTestPlayers();
+      updateTestStats();
+      addTestLog(`🎮 게임 시작! AI ${count}명`, 'log-system');
+      testState.players.forEach(p => {
+        const info = roleInfo[p.role];
+        addTestLog(`  ${info.name} → ${p.name}`,
+          p.role==='mafia'||p.role==='mafia_boss'?'log-mafia':p.role==='citizen'?'log-citizen':'log-special');
+      });
+      setTimeout(() => runTestPhase(), speed);
+    }
+
+    async function runTestPhase() {
+      if (!testState.running || testState.paused) return;
+      updateTestPhaseDisplay();
+      if      (testState.phase==='day')   await runDayPhase();
+      else if (testState.phase==='vote')  await runVotePhase();
+      else if (testState.phase==='night') await runNightPhase();
+    }
+
+    async function runDayPhase() {
+      addTestLog(`\n☀️ ── ${testState.day}일차 낮 ──`, 'log-day');
+      await sleep(testState.speed);
+      const alive    = testState.players.filter(p => p.alive);
+      const comments = generateDayComments(alive);
+      for (const c of comments) {
+        if (!testState.running || testState.paused) return;
+        addTestLog(`💬 ${c}`, 'log-citizen');
+        await sleep(testState.speed * 0.6);
+      }
+      testState.phase = 'vote';
+      await sleep(testState.speed);
+      if (testState.running && !testState.paused) runTestPhase();
+    }
+
+    async function runVotePhase() {
+      addTestLog(`\n🗳️ ── 투표 시작 ──`, 'log-vote');
+      document.getElementById('testVoteSection').classList.remove('hidden');
+      const alive = testState.players.filter(p => p.alive);
+      testState.votes = {};
+      for (const voter of alive) {
+        if (!testState.running) return;
+        const target = aiVote(voter, alive);
+        if (target) {
+          testState.votes[voter.id] = target.id;
+          addTestLog(`  ${voter.name} → ${target.name}`, 'log-vote');
+          renderTestVoteBoard();
+          await sleep(testState.speed * 0.5);
+        }
+      }
+      await sleep(testState.speed);
+      const voteCount = {};
+      Object.values(testState.votes).forEach(id => { voteCount[id] = (voteCount[id]||0)+1; });
+      const maxCount  = Math.max(...Object.values(voteCount), 0);
+      const maxVoters = Object.entries(voteCount).filter(([,c]) => c === maxCount);
+      let eliminatedId = maxVoters.length === 1 ? maxVoters[0][0] : null;
+
+      if (eliminatedId) {
+        const eliminated = testState.players.find(p => p.id === eliminatedId);
+        eliminated.alive = false;
+        const info = roleInfo[eliminated.role];
+        addTestLog(`💀 ${eliminated.name}님이 추방! (${info.name})`, 'log-vote');
+        if (eliminated.role === 'jester') { addTestLog(`🃏 광대 승리!`, 'log-win'); endTestGame('jester', eliminated.name); return; }
+      } else {
+        addTestLog(`⚖️ 동률! 아무도 추방되지 않았습니다.`, 'log-vote');
+      }
+
+      document.getElementById('testVoteSection').classList.add('hidden');
+      renderTestPlayers(); updateTestStats();
+      const win = checkTestWin();
+      if (win) { endTestGame(win); return; }
+      testState.phase = 'night';
+      await sleep(testState.speed);
+      if (testState.running && !testState.paused) runTestPhase();
+    }
+
+    async function runNightPhase() {
+      addTestLog(`\n🌙 ── ${testState.day}일차 밤 ──`, 'log-night');
+      const alive    = testState.players.filter(p => p.alive);
+      testState.nightActions = {};
+      const mafias   = alive.filter(p => p.role==='mafia'||p.role==='mafia_boss');
+      const nonMafia = alive.filter(p => p.role!=='mafia'&&p.role!=='mafia_boss');
+      if (mafias.length > 0 && nonMafia.length > 0) {
+        const target = aiMafiaTarget(mafias[0], nonMafia);
+        testState.nightActions.mafia = target.id;
+        addTestLog(`🔫 마피아가 ${target.name}을(를) 노립니다...`, 'log-mafia');
+        await sleep(testState.speed * 0.7);
+      }
+      const doctor = alive.find(p => p.role==='doctor');
+      if (doctor) {
+        const target = aiDoctorTarget(doctor, alive);
+        testState.nightActions.doctor = target.id;
+        addTestLog(`💊 의사가 ${target.name}을(를) 보호합니다.`, 'log-special');
+        await sleep(testState.speed * 0.7);
+      }
+      const police = alive.find(p => p.role==='police');
+      if (police) {
+        const target = aiPoliceTarget(police, alive);
+        if (target) {
+          testState.nightActions.police = target.id;
+          const isMafia = target.role === 'mafia';
+          if (!testState.policeKnowledge[police.id]) testState.policeKnowledge[police.id] = {};
+          testState.policeKnowledge[police.id][target.id] = isMafia;
+          addTestLog(`🔍 경찰이 ${target.name} 조사 → ${isMafia?'🔴 마피아!':'🔵 시민'}`, 'log-special');
+          await sleep(testState.speed * 0.7);
+        }
+      }
+      await sleep(testState.speed);
+      testState.players.forEach(p => p.protected = false);
+      if (testState.nightActions.doctor) {
+        const p = testState.players.find(p => p.id === testState.nightActions.doctor);
+        if (p) p.protected = true;
+      }
+      if (testState.nightActions.mafia) {
+        const target = testState.players.find(p => p.id === testState.nightActions.mafia);
+        if (target) {
+          if (target.protected) addTestLog(`💊 ${target.name}님이 의사의 보호로 살아남았습니다!`, 'log-special');
+          else { target.alive = false; addTestLog(`💀 ${target.name}님이 마피아에게 제거되었습니다.`, 'log-mafia'); }
+        }
+      } else { addTestLog(`🌙 오늘 밤은 아무 일도 없었습니다.`, 'log-night'); }
+      testState.players.forEach(p => p.protected = false);
+      renderTestPlayers(); updateTestStats();
+      const win = checkTestWin();
+      if (win) { endTestGame(win); return; }
+      testState.day++; testState.phase = 'day';
+      await sleep(testState.speed);
+      if (testState.running && !testState.paused) runTestPhase();
+    }
+
+    function aiVote(voter, alive) {
+      const others = alive.filter(p => p.id !== voter.id);
+      if (others.length === 0) return null;
+      if (voter.role==='mafia'||voter.role==='mafia_boss') {
+        const special = others.filter(p => p.role!=='mafia'&&p.role!=='mafia_boss'&&(p.role==='police'||p.role==='doctor'));
+        if (special.length > 0 && Math.random() > 0.3) return special[Math.floor(Math.random()*special.length)];
+        const nonMafia = others.filter(p => p.role!=='mafia'&&p.role!=='mafia_boss');
+        return nonMafia[Math.floor(Math.random()*nonMafia.length)];
+      }
+      if (voter.role==='police' && testState.policeKnowledge[voter.id]) {
+        const knownMafia = others.filter(p => testState.policeKnowledge[voter.id][p.id]===true);
+        if (knownMafia.length > 0) return knownMafia[0];
+      }
+      return others[Math.floor(Math.random()*others.length)];
+    }
+    function aiMafiaTarget(mafia, nonMafia) {
+      const police = nonMafia.find(p => p.role==='police');
+      if (police && Math.random() > 0.4) return police;
+      const doctor = nonMafia.find(p => p.role==='doctor');
+      if (doctor && Math.random() > 0.5) return doctor;
+      return nonMafia[Math.floor(Math.random()*nonMafia.length)];
+    }
+    function aiDoctorTarget(doctor, alive) {
+      if (Math.random() < 0.3) return doctor;
+      return alive[Math.floor(Math.random()*alive.length)];
+    }
+    function aiPoliceTarget(police, alive) {
+      const known   = testState.policeKnowledge[police.id]||{};
+      const unknown = alive.filter(p => p.id!==police.id && !known[p.id]);
+      if (unknown.length === 0) return null;
+      return unknown[Math.floor(Math.random()*unknown.length)];
+    }
+    function generateDayComments(alive) {
+      const comments = [];
+      const shuffled = [...alive].sort(() => Math.random()-0.5);
+      const count    = Math.min(3, shuffled.length);
+      for (let i = 0; i < count; i++) {
+        const speaker = shuffled[i];
+        const others  = alive.filter(p => p.id !== speaker.id);
+        const target  = others[Math.floor(Math.random()*others.length)];
+        const isMafia = speaker.role==='mafia'||speaker.role==='mafia_boss';
+        const pool = isMafia
+          ? [`${speaker.name}: "저는 절대 마피아가 아닙니다!"`,
+             `${speaker.name}: "${target.name}님이 더 의심스럽지 않나요?"`,
+             `${speaker.name}: "다들 침착하게 생각해봐요."`]
+          : [`${speaker.name}: "${target.name}님이 수상한 것 같아요!"`,
+             `${speaker.name}: "저는 시민입니다. ${target.name}님을 의심해봐야 할 것 같아요."`,
+             `${speaker.name}: "${target.name}님 해명해주세요."`];
+        comments.push(pool[Math.floor(Math.random()*pool.length)]);
+      }
+      return comments;
+    }
+    function checkTestWin() {
+      const alive  = testState.players.filter(p => p.alive);
+      const mafia  = alive.filter(p => p.role==='mafia'||p.role==='mafia_boss');
+      const others = alive.filter(p => p.role!=='mafia'&&p.role!=='mafia_boss');
+      if (mafia.length === 0) return 'citizen';
+      if (mafia.length >= others.length) return 'mafia';
+      return null;
+    }
+    function endTestGame(winner, jesterName='') {
+      testState.running = false; clearTimeout(testTimeout);
+      const emojis   = { citizen:'🎉', mafia:'😈', jester:'🃏' };
+      const titles   = { citizen:'시민팀 승리!', mafia:'마피아팀 승리!', jester:'광대 승리!' };
+      const messages = { citizen:'시민들이 마피아를 모두 제거했습니다!', mafia:'마피아가 시민을 압도했습니다!', jester:`${jesterName}님(광대)이 추방당해 승리했습니다!` };
+      addTestLog(`\n🏁 ${titles[winner]}`, 'log-win');
+      document.getElementById('testResultEmoji').textContent = emojis[winner]||'🎭';
+      document.getElementById('testResultTitle').textContent = titles[winner]||'게임 종료';
+      document.getElementById('testResultMsg').textContent   = messages[winner]||'';
+      document.getElementById('testResultPlayers').innerHTML =
+        testState.players.map(p => {
+          const info = roleInfo[p.role];
+          return `<div class="result-player-row"><span>${p.alive?'✅':'💀'} ${p.name}</span><span class="${info.cls}">${info.name}</span></div>`;
+        }).join('');
+      document.getElementById('testResultModal').classList.remove('hidden');
+    }
+
+    function renderTestPlayers() {
+      document.getElementById('aiPlayerList').innerHTML =
+        testState.players.map(p => {
+          const info = roleInfo[p.role];
+          return `<div class="ai-player-item ${!p.alive?'dead':''}">
+            <div class="ai-info">
+              <div class="ai-name">${!p.alive?'💀':'🧑'} ${p.name}</div>
+              <div class="ai-role ${info.cls}">${info.name}</div>
+            </div>
+            <div class="ai-status">${!p.alive?'사망':p.protected?'💊 보호 중':''}</div>
+          </div>`;
+        }).join('');
+    }
+    function renderTestVoteBoard() {
+      const voteCount = {}, voterMap = {};
+      Object.entries(testState.votes).forEach(([voterId, targetId]) => {
+        voteCount[targetId] = (voteCount[targetId]||0)+1;
+        if (!voterMap[targetId]) voterMap[targetId] = [];
+        const voter = testState.players.find(p => p.id === voterId);
+        if (voter) voterMap[targetId].push(voter.name);
+      });
+      const total = testState.players.filter(p => p.alive).length;
+      document.getElementById('testVoteBoard').innerHTML =
+        Object.entries(voteCount).sort(([,a],[,b]) => b-a).map(([targetId, count]) => {
+          const target = testState.players.find(p => p.id === targetId);
+          const pct    = Math.round((count/total)*100);
+          return `<div class="vote-bar-wrap">
+            <div class="vote-bar-label"><span>${target?.name||'?'} (${voterMap[targetId]?.join(', ')})</span><span style="color:#e94560;">${count}표</span></div>
+            <div class="vote-bar-bg"><div class="vote-bar-fill" style="width:${pct}%"></div></div>
+          </div>`;
+        }).join('');
+    }
+    function updateTestPhaseDisplay() {
+      const names = { day:'☀️ 낮', night:'🌙 밤', vote:'🗳️ 투표' };
+      const el    = document.getElementById('testPhaseDisplay');
+      el.textContent = names[testState.phase]||testState.phase;
+      el.className   = `phase-badge phase-${testState.phase}`;
+      document.getElementById('testDayDisplay').textContent = `${testState.day}일차`;
+      document.getElementById('statDay').textContent = testState.day;
+    }
+    function updateTestStats() {
+      const alive   = testState.players.filter(p => p.alive);
+      const mafia   = alive.filter(p => p.role==='mafia'||p.role==='mafia_boss');
+      const citizen = alive.filter(p => p.role!=='mafia'&&p.role!=='mafia_boss');
+      document.getElementById('statAlive').textContent   = alive.length;
+      document.getElementById('statMafia').textContent   = mafia.length;
+      document.getElementById('statCitizen').textContent = citizen.length;
+    }
+    function addTestLog(text, cls='') {
+      const log = document.getElementById('testLog');
+      const div = document.createElement('div');
+      div.className   = `log-entry ${cls}`;
+      div.textContent = text;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
+    function sleep(ms) {
+      return new Promise(resolve => { testTimeout = setTimeout(resolve, ms); });
+    }
+
+    document.getElementById('testPauseBtn').addEventListener('click', () => {
+      testState.paused = !testState.paused;
+      document.getElementById('testPauseBtn').textContent = testState.paused ? '▶️ 재개' : '⏸️ 일시정지';
+      if (!testState.paused && testState.running) { addTestLog('▶️ 재개', 'log-system'); runTestPhase(); }
+    });
+    document.getElementById('testRestartBtn').addEventListener('click', () => {
+      testState.running = false; clearTimeout(testTimeout);
+      document.getElementById('testResultModal').classList.add('hidden');
+      const count = parseInt(document.getElementById('aiCount').value)||6;
+      startTestMode(count, getTestRoles(count), parseInt(document.getElementById('testSpeedControl').value));
+    });
+    document.getElementById('testBackBtn').addEventListener('click', () => {
+      testState.running = false; clearTimeout(testTimeout); showScreen('test-setup-screen');
+    });
+    document.getElementById('testSpeedControl').addEventListener('change', e => { testState.speed = parseInt(e.target.value); });
+    document.getElementById('testPlayAgain').addEventListener('click', () => {
+      document.getElementById('testResultModal').classList.add('hidden');
+      const count = parseInt(document.getElementById('aiCount').value)||6;
+      startTestMode(count, getTestRoles(count), parseInt(document.getElementById('testSpeedControl').value));
+    });
+    document.getElementById('testGoLobby').addEventListener('click', () => {
+      testState.running = false; clearTimeout(testTimeout);
+      document.getElementById('testResultModal').classList.add('hidden');
+      showScreen('lobby-screen');
+    });
+
+    // ════════════════════════════════════════════════════════
+    //  화면 전환
+    // ════════════════════════════════════════════════════════
+    function showScreen(name) {
+      ['lobby-screen','waiting-screen','game-screen','admin-screen','gm-screen','test-screen','test-setup-screen']
+        .forEach(id => document.getElementById(id).classList.add('hidden'));
+      document.getElementById(name).classList.remove('hidden');
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  설정
+    // ════════════════════════════════════════════════════════
+    function loadSettings() {
+      const saved = localStorage.getItem('mafiaGameSettings');
+      if (saved) { try { gameSettings = JSON.parse(saved); applySettingsToUI(); } catch(e){} }
+    }
+    function saveSettingsLocal() { localStorage.setItem('mafiaGameSettings', JSON.stringify(gameSettings)); }
+    function applySettingsToUI() {
+      document.getElementById('minPlayers').value = gameSettings.minPlayers;
+      document.getElementById('maxPlayers').value = gameSettings.maxPlayers;
+      document.getElementById('timerDay').value   = gameSettings.timers.day;
+      document.getElementById('timerVote').value  = gameSettings.timers.vote;
+      document.getElementById('timerNight').value = gameSettings.timers.night;
+      Object.entries(gameSettings.roles).forEach(([role, count]) => {
+        const el = document.getElementById(`count-${role}`);
+        if (el) el.textContent = count;
+      });
+      updateTotalCount();
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  관리자
+    // ════════════════════════════════════════════════════════
+    document.getElementById('openAdminLogin').addEventListener('click', () => {
+      document.getElementById('adminLoginModal').classList.remove('hidden');
+      document.getElementById('adminPassword').value = '';
+    });
+    document.getElementById('adminLoginBtn').addEventListener('click', () => {
+      if (document.getElementById('adminPassword').value === ADMIN_PASSWORD) {
+        document.getElementById('adminLoginModal').classList.add('hidden');
+        applySettingsToUI(); showScreen('admin-screen');
+      } else {
+        showNotification('비밀번호가 틀렸습니다! ❌');
+        document.getElementById('adminPassword').value = '';
+      }
+    });
+    document.getElementById('adminPassword').addEventListener('keypress', e => {
+      if (e.key === 'Enter') document.getElementById('adminLoginBtn').click();
+    });
+    document.getElementById('adminLoginCancel').addEventListener('click', () => {
+      document.getElementById('adminLoginModal').classList.add('hidden');
+    });
+    document.getElementById('saveAdminSettings').addEventListener('click', () => {
+      const min = parseInt(document.getElementById('minPlayers').value);
+      const max = parseInt(document.getElementById('maxPlayers').value);
+      if (min < 2)   return showNotification('최소 인원은 2명 이상이어야 합니다.');
+      if (max < min) return showNotification('최대 인원은 최소 인원보다 커야 합니다.');
+      gameSettings.minPlayers   = min; gameSettings.maxPlayers   = max;
+      gameSettings.timers.day   = parseInt(document.getElementById('timerDay').value);
+      gameSettings.timers.vote  = parseInt(document.getElementById('timerVote').value);
+      gameSettings.timers.night = parseInt(document.getElementById('timerNight').value);
+      Object.keys(gameSettings.roles).forEach(role => {
+        gameSettings.roles[role] = parseInt(document.getElementById(`count-${role}`).textContent);
+      });
+      saveSettingsLocal();
+      showNotification('✅ 설정이 저장되었습니다!');
+    });
+    document.getElementById('backFromAdmin').addEventListener('click', () => showScreen('lobby-screen'));
+
+    window.changeRole = function(role, delta) {
+      const el = document.getElementById(`count-${role}`);
+      el.textContent = Math.max(0, parseInt(el.textContent) + delta);
+      updateTotalCount();
+    };
+    function updateTotalCount() {
+      const total = Object.keys(gameSettings.roles).reduce((sum, role) => {
+        const el = document.getElementById(`count-${role}`);
+        return sum + (el ? parseInt(el.textContent) : 0);
+      }, 0);
+      const min    = parseInt(document.getElementById('minPlayers').value)||4;
+      const el     = document.getElementById('totalRoleCount');
+      const warnEl = document.getElementById('roleWarning');
+      el.textContent = `${total}명`;
+      if (total < min) {
+        el.className = 'total-count invalid';
+        warnEl.textContent = `⚠️ 역할 합계(${total}명)가 최소 인원(${min}명)보다 적습니다!`;
+        warnEl.classList.remove('hidden');
+      } else { el.className = 'total-count valid'; warnEl.classList.add('hidden'); }
+    }
+    window.applyPreset = function(count) {
+      const presets = {
+        4:  { mafia:1, mafia_boss:0, doctor:1, police:1, jester:1, citizen:0 },
+        6:  { mafia:1, mafia_boss:1, doctor:1, police:1, jester:1, citizen:1 },
+        8:  { mafia:1, mafia_boss:1, doctor:1, police:1, jester:1, citizen:3 },
+        10: { mafia:2, mafia_boss:1, doctor:1, police:1, jester:1, citizen:4 },
+      };
+      const p = presets[count];
+      if (!p) return;
+      Object.entries(p).forEach(([role, val]) => {
+        const el = document.getElementById(`count-${role}`);
+        if (el) el.textContent = val;
+      });
+      document.getElementById('minPlayers').value = count;
+      document.getElementById('maxPlayers').value = count + 2;
+      updateTotalCount();
+      showNotification(`${count}인 프리셋 적용! ✅`);
+    };
+
+    // ════════════════════════════════════════════════════════
+    //  초기화
+    // ════════════════════════════════════════════════════════
+    async function init() {
+      loadSettings(); showLoading(true);
+      try {
+        const cred = await signInAnonymously(auth);
+        state.uid  = cred.user.uid;
+        const savedRoomId   = sessionStorage.getItem('roomId');
+        const savedNickname = sessionStorage.getItem('nickname');
+        const savedIsGM     = sessionStorage.getItem('isGM') === 'true';
+        if (savedRoomId && savedNickname) {
+          const roomSnap = await get(ref(db, `rooms/${savedRoomId}`));
+          if (roomSnap.exists()) {
+            state.roomId = savedRoomId; state.nickname = savedNickname; state.isGM = savedIsGM;
+            const room = roomSnap.val();
+            if (room.phase === 'lobby') enterWaitingRoom(savedRoomId);
+            else if (state.isGM)        enterGMScreen(savedRoomId);
+            else                        enterGameScreen(savedRoomId);
+            showLoading(false); return;
+          }
+        }
+      } catch(e) { showNotification('Firebase 연결 실패: ' + e.message); }
+      showLoading(false);
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  로비
+    // ════════════════════════════════════════════════════════
+    document.getElementById('createRoom').addEventListener('click', async () => {
+      const nickname = getNickname();
+      if (!nickname) return;
+      showLoading(true);
+      const roomId = generateRoomId();
+      try {
+        await set(ref(db, `rooms/${roomId}`), {
+          host:state.uid, phase:'lobby', dayCount:0,
+          createdAt:serverTimestamp(), settings:gameSettings,
+        });
+        state.roomId = roomId; state.nickname = nickname; state.isGM = true;
+        sessionStorage.setItem('roomId', roomId);
+        sessionStorage.setItem('nickname', nickname);
+        sessionStorage.setItem('isGM', 'true');
+        enterWaitingRoom(roomId);
+      } catch(e) { showNotification('방 생성 실패: ' + e.message); }
+      finally { showLoading(false); }
+    });
+
+    document.getElementById('joinRoom').addEventListener('click', async () => {
+      const nickname = getNickname();
+      if (!nickname) return;
+      const roomId = document.getElementById('roomCode').value.trim().toUpperCase();
+      if (roomId.length !== 6) return showNotification('방 코드는 6자리입니다.');
+      showLoading(true);
+      try {
+        const roomSnap = await get(ref(db, `rooms/${roomId}`));
+        if (!roomSnap.exists()) return showNotification('존재하지 않는 방입니다.');
+        const room = roomSnap.val();
+        if (room.phase !== 'lobby') return showNotification('이미 게임이 시작된 방입니다.');
+        const maxP = room.settings?.maxPlayers||gameSettings.maxPlayers;
+        const playersSnap = await get(ref(db, `rooms/${roomId}/players`));
+        const count = playersSnap.exists() ? Object.keys(playersSnap.val()).length : 0;
+        if (count >= maxP) return showNotification(`방이 가득 찼습니다. (최대 ${maxP}명)`);
+        await joinRoomDB(roomId, nickname);
+        state.isGM = false;
+        sessionStorage.setItem('isGM', 'false');
+        enterWaitingRoom(roomId);
+      } catch(e) { showNotification('참가 실패: ' + e.message); }
+      finally { showLoading(false); }
+    });
+
+    async function joinRoomDB(roomId, nickname) {
+      const playerRef = ref(db, `rooms/${roomId}/players/${state.uid}`);
+      await set(playerRef, { nickname, role:null, alive:true, protected:false, connected:true, kicked:false });
+      onDisconnect(playerRef).remove();
+      state.roomId = roomId; state.nickname = nickname;
+      sessionStorage.setItem('roomId', roomId);
+      sessionStorage.setItem('nickname', nickname);
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  방 나가기 / 강퇴
+    // ════════════════════════════════════════════════════════
+    async function leaveRoomLogic(isGM = false) {
+      try {
+        if (state.roomId) {
+          if (isGM) {
+            await push(ref(db, `rooms/${state.roomId}/chat`), {
+              type:'system', message:'👑 진행자가 방을 나갔습니다.', timestamp:serverTimestamp(),
+            });
+          } else {
+            await remove(ref(db, `rooms/${state.roomId}/players/${state.uid}`));
+            const snap = await get(ref(db, `rooms/${state.roomId}`));
+            if (snap.exists() && snap.val().phase !== 'lobby') {
+              await push(ref(db, `rooms/${state.roomId}/chat`), {
+                type:'system', message:`🚪 ${state.nickname}님이 게임을 나갔습니다.`, timestamp:serverTimestamp(),
+              });
+            }
+            const playersSnap = await get(ref(db, `rooms/${state.roomId}/players`));
+            if (!playersSnap.exists() || Object.keys(playersSnap.val()).length === 0) {
+              await remove(ref(db, `rooms/${state.roomId}`));
+            }
+          }
+        }
+      } catch(e) { console.error('나가기 오류:', e); }
+      finally {
+        sessionStorage.clear();
+        state.roomId = null; state.nickname = null; state.isGM = false;
+        state.myRole = null; state.phase = null; state.players = {};
+        clearInterval(state.timerInterval);
+        showScreen('lobby-screen');
+        showNotification('방에서 나갔습니다. 👋');
+      }
+    }
+
+    document.getElementById('leaveRoom').addEventListener('click', async () => {
+      if (!confirm('방에서 나가시겠습니까?')) return;
+      await leaveRoomLogic(false);
+    });
+    document.getElementById('leaveGame').addEventListener('click', async () => {
+      if (!confirm('게임에서 나가시겠습니까?\n(나가도 게임은 계속 진행됩니다)')) return;
+      await leaveRoomLogic(false);
+    });
+    document.getElementById('leaveGM').addEventListener('click', async () => {
+      if (!confirm('진행자로서 방을 나가시겠습니까?')) return;
+      await leaveRoomLogic(true);
+    });
+
+    async function kickPlayer(targetUid, targetName) {
+      if (!state.roomId) return;
+      try {
+        await update(ref(db, `rooms/${state.roomId}/players/${targetUid}`), { kicked: true });
+        await push(ref(db, `rooms/${state.roomId}/chat`), {
+          type:'system', message:`🚫 ${targetName}님이 진행자에 의해 강퇴되었습니다.`, timestamp:serverTimestamp(),
+        });
+        showNotification(`${targetName}님을 강퇴했습니다. 🚫`);
+      } catch(e) { showNotification('강퇴 실패: ' + e.message); }
+    }
+
+    window.gmKickPlayer = async function(uid, name) {
+      if (!confirm(`${name}님을 강퇴하시겠습니까?`)) return;
+      await kickPlayer(uid, name);
+    };
+
+    function handleKicked() {
+      clearInterval(state.timerInterval);
+      const gameScreen = document.getElementById('game-screen');
+      gameScreen.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;">
+          <div class="kick-notice">
+            <div style="font-size:3rem;margin-bottom:12px;">🚫</div>
+            <div style="font-size:1.4rem;font-weight:bold;margin-bottom:8px;">강퇴되었습니다</div>
+            <div style="font-size:0.9rem;color:#a8b2d8;margin-bottom:20px;">진행자에 의해 게임에서 강퇴되었습니다.</div>
+            <button onclick="goToLobbyAfterKick()" class="btn btn-primary" style="width:auto;padding:10px 30px;">🏠 로비로 돌아가기</button>
+          </div>
+        </div>`;
+      remove(ref(db, `rooms/${state.roomId}/players/${state.uid}`));
+      sessionStorage.clear();
+    }
+
+    window.goToLobbyAfterKick = function() {
+      state.roomId = null; state.nickname = null;
+      state.myRole = null; state.phase = null; state.players = {};
+      // game-screen 복원
+      location.reload();
+    };
+
+    // ════════════════════════════════════════════════════════
+    //  대기실
+    // ════════════════════════════════════════════════════════
+    function enterWaitingRoom(roomId) {
+      showScreen('waiting-screen');
+      document.getElementById('roomCodeDisplay').textContent = roomId;
+      onValue(ref(db, `rooms/${roomId}`), snap => {
+        if (!snap.exists()) return;
+        const room    = snap.val();
+        const players = room.players ? Object.entries(room.players) : [];
+        const minP    = room.settings?.minPlayers||gameSettings.minPlayers;
+        renderPlayerList(players, room.host);
+        updateStartButton(players.length, room.host, minP);
+        if (room.phase !== 'lobby') {
+          if (state.isGM) enterGMScreen(roomId);
+          else            enterGameScreen(roomId);
+        }
+      });
+    }
+
+    function renderPlayerList(players, host) {
+      document.getElementById('playerList').innerHTML =
+        players.map(([uid, p]) =>
+          `<div class="player-item">
+            ${uid === host ? '<span class="crown">👑</span>' : ''}
+            <span style="flex:1;">${p.nickname}</span>
+            ${uid === state.uid ? '<span class="me-badge">나</span>' : ''}
+            ${state.isGM && uid !== state.uid
+              ? `<button class="kick-btn btn btn-small btn-danger"
+                   style="padding:3px 10px;font-size:0.75rem;margin-left:4px;"
+                   data-uid="${uid}" data-name="${p.nickname}">강퇴</button>`
+              : ''}
+          </div>`
+        ).join('') +
+        (state.isGM
+          ? `<div class="player-item" style="border:1px solid #1a6b3c;">
+              <span class="crown">👑</span>
+              <span style="flex:1;">${state.nickname} (진행자)</span>
+              <span class="me-badge" style="background:#1a6b3c;">GM</span>
+             </div>` : '');
+
+      document.querySelectorAll('.kick-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const targetUid  = btn.dataset.uid;
+          const targetName = btn.dataset.name;
+          if (!confirm(`${targetName}님을 강퇴하시겠습니까?`)) return;
+          await kickPlayer(targetUid, targetName);
+        });
+      });
+    }
+
+    function updateStartButton(count, host, minP) {
+      const hostControls = document.getElementById('hostControls');
+      const waitMsg      = document.getElementById('waitingMsg');
+      const startBtn     = document.getElementById('startGame');
+      if (state.isGM) {
+        hostControls.classList.remove('hidden');
+        waitMsg.classList.add('hidden');
+        startBtn.disabled    = count < minP;
+        startBtn.textContent = count < minP ? `게임 시작 (${count}/${minP}명 필요)` : `🎮 게임 시작! (${count}명)`;
+      }
+    }
+
+    document.getElementById('startGame').addEventListener('click', async () => {
+      const roomSnap = await get(ref(db, `rooms/${state.roomId}`));
+      if (!roomSnap.exists()) return;
+      const room = roomSnap.val();
+      const playersSnap = await get(ref(db, `rooms/${state.roomId}/players`));
+      if (!playersSnap.exists()) return;
+      const players  = Object.entries(playersSnap.val());
+      const settings = room.settings||gameSettings;
+      const roles    = assignRolesFromSettings(players.length, settings.roles);
+      if (!roles) return showNotification('역할 설정이 플레이어 수와 맞지 않습니다!');
+      const updates = {};
+      players.forEach(([uid], i) => { updates[`rooms/${state.roomId}/players/${uid}/role`] = roles[i]; });
+      updates[`rooms/${state.roomId}/phase`]    = 'day';
+      updates[`rooms/${state.roomId}/dayCount`] = 1;
+      updates[`rooms/${state.roomId}/timer`]    = {
+        endsAt:Date.now()+(settings.timers?.day||30)*1000,
+        duration:settings.timers?.day||30, phase:'day',
+      };
+      await update(ref(db), updates);
+    });
+
+    document.getElementById('copyCode').addEventListener('click', () => {
+      navigator.clipboard.writeText(state.roomId);
+      showNotification('방 코드가 복사되었습니다! 📋');
+    });
+
+    // ════════════════════════════════════════════════════════
+    //  GM 화면
+    // ════════════════════════════════════════════════════════
+    function enterGMScreen(roomId) {
+      showScreen('gm-screen');
+      onValue(ref(db, `rooms/${roomId}`), handleGMRoomUpdate);
+      onValue(ref(db, `rooms/${roomId}/chat`), handleGMChat);
+    }
+
+    function handleGMRoomUpdate(snap) {
+      if (!snap.exists()) return;
+      const room = snap.val();
+      state.players = room.players||{};
+      state.phase   = room.phase;
+      updateGMPhaseDisplay(room.phase, room.dayCount);
+      if (room.timer) updateGMTimer(room.timer);
+      renderGMPlayerGrid(room);
+      renderGMVoteBoard(room);
+      renderGMNightBoard(room);
+      renderGMKickList(room);
+      if (room.phase === 'result' && room.result) showGMGameOver(room.result, room.players);
+    }
+
+    function updateGMPhaseDisplay(phase, dayCount) {
+      const names = { day:'☀️ 낮', night:'🌙 밤', vote:'🗳️ 투표', result:'📋 결과' };
+      const el    = document.getElementById('gmPhaseDisplay');
+      el.textContent = names[phase]||phase;
+      el.className   = `phase-badge phase-${phase}`;
+      document.getElementById('gmDayDisplay').textContent = `${dayCount||1}일차`;
+      document.getElementById('gmVotePanel').classList.toggle('hidden', phase!=='vote'&&phase!=='day');
+      document.getElementById('gmNightPanel').classList.toggle('hidden', phase!=='night');
+    }
+
+    function updateGMTimer(timer) {
+      clearInterval(state.timerInterval);
+      const el = document.getElementById('gmTimerDisplay');
+      state.timerInterval = setInterval(() => {
+        const remaining = Math.max(0, Math.ceil((timer.endsAt - Date.now()) / 1000));
+        el.textContent = remaining;
+        el.className   = remaining <= 5 ? 'timer urgent' : 'timer';
+        if (remaining <= 0) clearInterval(state.timerInterval);
+      }, 500);
+    }
+
+    function renderGMPlayerGrid(room) {
+      document.getElementById('gmPlayerGrid').innerHTML =
+        Object.entries(room.players||{}).map(([uid, p]) => {
+          const info      = roleInfo[p.role]||{ name:p.role, color:'' };
+          const isMafia   = p.role==='mafia'||p.role==='mafia_boss';
+          const isSpecial = p.role==='doctor'||p.role==='police'||p.role==='jester';
+          return `<div class="gm-player-card ${!p.alive?'dead':''} ${isMafia?'mafia-role':''} ${isSpecial?'special-role':''}">
+            <div class="gm-player-info">
+              <div class="gm-player-name">${!p.alive?'💀':'🧑'} ${p.nickname}</div>
+              <div class="gm-player-role ${info.color}">${info.name||p.role}</div>
+              ${p.protected?'<div style="color:#2ecc71;font-size:0.75rem;">💊 보호 중</div>':''}
+            </div>
+          </div>`;
+        }).join('');
+    }
+
+    function renderGMVoteBoard(room) {
+      const votes   = room.votes||{};
+      const players = room.players||{};
+      if (Object.keys(votes).length === 0) {
+        document.getElementById('gmVoteBoard').innerHTML = '<div style="color:#a8b2d8;text-align:center;">아직 투표 없음</div>';
+        return;
+      }
+      const voteCount = {}, voterMap = {};
+      Object.entries(votes).forEach(([voterId, targetId]) => {
+        voteCount[targetId] = (voteCount[targetId]||0)+1;
+        if (!voterMap[targetId]) voterMap[targetId] = [];
+        voterMap[targetId].push(players[voterId]?.nickname||'?');
+      });
+      document.getElementById('gmVoteBoard').innerHTML =
+        Object.entries(voteCount).sort(([,a],[,b]) => b-a).map(([targetId, count]) => {
+          const target = players[targetId];
+          return `<div class="gm-vote-row">
+            <span>🧑 ${target?.nickname||'?'}</span>
+            <span style="color:#a8b2d8;font-size:0.8rem;">${voterMap[targetId].join(', ')}</span>
+            <span style="color:#e94560;font-weight:bold;">${count}표</span>
+          </div>`;
+        }).join('');
+    }
+
+    function renderGMNightBoard(room) {
+      const actions = room.nightActions||{};
+      const players = room.players||{};
+      document.getElementById('gmNightBoard').innerHTML =
+        [{ label:'🔫 마피아 타겟', key:'mafia' },
+         { label:'💊 의사 보호',   key:'doctor' },
+         { label:'🔍 경찰 조사',   key:'police' }]
+        .map(row => {
+          const target = actions[row.key] ? players[actions[row.key]]?.nickname : null;
+          return `<div class="gm-night-row">
+            <span class="gm-night-label">${row.label}</span>
+            <span>${target?`<strong>${target}</strong>`:'<span style="color:#555;">대기 중...</span>'}</span>
+          </div>`;
+        }).join('');
+    }
+
+    function renderGMKickList(room) {
+      const players = Object.entries(room.players||{});
+      document.getElementById('gmKickList').innerHTML = players.length === 0
+        ? '<span style="color:#a8b2d8;font-size:0.85rem;">플레이어 없음</span>'
+        : players.map(([uid, p]) =>
+            `<button class="btn btn-small btn-danger"
+               style="opacity:${p.alive?'1':'0.4'};"
+               ${!p.alive?'disabled':''}
+               onclick="gmKickPlayer('${uid}','${p.nickname}')">
+               🚫 ${p.nickname}
+             </button>`
+          ).join('');
+    }
+
+    function handleGMChat(snap) {
+      if (!snap.exists()) return;
+      snap.forEach(child => {
+        if (renderedGmMsgIds.has(child.key)) return;
+        renderedGmMsgIds.add(child.key);
+        const msg = child.val();
+        const box = document.getElementById('gmChatBox');
+        const div = document.createElement('div');
+        if (msg.type === 'system' || msg.type?.startsWith('event')) {
+          div.className   = 'chat-msg system';
+          div.textContent = `📢 ${msg.message}`;
+        } else if (msg.isGM) {
+          div.className = 'chat-msg gm-msg';
+          div.innerHTML = `<span class="sender">[GM] ${msg.sender}</span>: ${msg.message}`;
+        } else {
+          div.className = 'chat-msg';
+          div.innerHTML = `<span class="sender">${msg.sender}</span>: ${msg.message}`;
+        }
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+      });
+    }
+
+    document.getElementById('gmSendChat').addEventListener('click', async () => {
+      const input = document.getElementById('gmChatInput');
+      const msg   = input.value.trim();
+      if (!msg) return;
+      await push(ref(db, `rooms/${state.roomId}/chat`), {
+        sender:state.nickname, message:msg, isGM:true, timestamp:serverTimestamp(),
+      });
+      input.value = '';
+    });
+    document.getElementById('gmChatInput').addEventListener('keypress', e => {
+      if (e.key === 'Enter') document.getElementById('gmSendChat').click();
+    });
+    document.getElementById('gmSendNotice').addEventListener('click', async () => {
+      const input = document.getElementById('gmNoticeInput');
+      const msg   = input.value.trim();
+      if (!msg) return;
+      await push(ref(db, `rooms/${state.roomId}/chat`), {
+        type:'system', message:`[진행자 공지] ${msg}`, timestamp:serverTimestamp(),
+      });
+      input.value = '';
+    });
+    document.getElementById('gmNoticeInput').addEventListener('keypress', e => {
+      if (e.key === 'Enter') document.getElementById('gmSendNotice').click();
+    });
+
+    document.getElementById('gmSkipTimer').addEventListener('click', async () => {
+      await update(ref(db, `rooms/${state.roomId}/timer`), { endsAt:Date.now()+1000 });
+      showNotification('⏩ 타이머를 스킵했습니다!');
+    });
+    document.getElementById('gmForceDay').addEventListener('click', async () => {
+      const snap = await get(ref(db, `rooms/${state.roomId}`));
+      if (!snap.exists()) return;
+      const room = snap.val(); const timers = room.settings?.timers||gameSettings.timers;
+      await update(ref(db, `rooms/${state.roomId}`), {
+        phase:'day', dayCount:(room.dayCount||1)+1,
+        'timer/endsAt':Date.now()+timers.day*1000, 'timer/duration':timers.day, 'timer/phase':'day',
+      });
+      await push(ref(db, `rooms/${state.roomId}/chat`), { type:'system', message:'[진행자] ☀️ 낮으로 강제 전환', timestamp:serverTimestamp() });
+    });
+    document.getElementById('gmForceVote').addEventListener('click', async () => {
+      const snap = await get(ref(db, `rooms/${state.roomId}`));
+      if (!snap.exists()) return;
+      const room = snap.val(); const timers = room.settings?.timers||gameSettings.timers;
+      await update(ref(db, `rooms/${state.roomId}`), {
+        phase:'vote', votes:null,
+        'timer/endsAt':Date.now()+timers.vote*1000, 'timer/duration':timers.vote, 'timer/phase':'vote',
+      });
+      await push(ref(db, `rooms/${state.roomId}/chat`), { type:'system', message:'[진행자] 🗳️ 투표로 강제 전환', timestamp:serverTimestamp() });
+    });
+    document.getElementById('gmForceNight').addEventListener('click', async () => {
+      const snap = await get(ref(db, `rooms/${state.roomId}`));
+      if (!snap.exists()) return;
+      const room = snap.val(); const timers = room.settings?.timers||gameSettings.timers;
+      await update(ref(db, `rooms/${state.roomId}`), {
+        phase:'night', nightActions:{mafia:null,doctor:null,police:null},
+        'timer/endsAt':Date.now()+timers.night*1000, 'timer/duration':timers.night, 'timer/phase':'night',
+      });
+      await push(ref(db, `rooms/${state.roomId}/chat`), { type:'system', message:'[진행자] 🌙 밤으로 강제 전환', timestamp:serverTimestamp() });
+    });
+    document.getElementById('gmEndGame').addEventListener('click', async () => {
+      if (!confirm('정말 게임을 종료하시겠습니까?')) return;
+      await update(ref(db, `rooms/${state.roomId}`), {
+        phase:'result', result:{ winner:'none', message:'진행자가 게임을 종료했습니다.' },
+      });
+    });
+
+    function showGMGameOver(result, players) {
+      const modal = document.getElementById('gmGameOverModal');
+      if (!modal.classList.contains('hidden')) return;
+      const emojis = { citizen:'🎉', mafia:'😈', jester:'🃏', none:'🛑' };
+      const titles = { citizen:'시민 승리!', mafia:'마피아 승리!', jester:'광대 승리!', none:'게임 종료' };
+      document.getElementById('gmGameOverEmoji').textContent   = emojis[result.winner]||'🎭';
+      document.getElementById('gmGameOverTitle').textContent   = titles[result.winner]||'게임 종료';
+      document.getElementById('gmGameOverMessage').textContent = result.message;
+      document.getElementById('gmFinalPlayerList').innerHTML   =
+        Object.values(players).map(p => {
+          const info = roleInfo[p.role]||{ name:p.role, cls:'' };
+          return `<div class="final-player-row"><span>${p.alive?'✅':'💀'} ${p.nickname}</span><span class="${info.cls}">${info.name}</span></div>`;
+        }).join('');
+      modal.classList.remove('hidden');
+    }
+    document.getElementById('gmBackToLobby').addEventListener('click', () => {
+      sessionStorage.clear(); showScreen('lobby-screen');
+    });
+
+    // ════════════════════════════════════════════════════════
+    //  플레이어 게임 화면
+    // ════════════════════════════════════════════════════════
+    async function enterGameScreen(roomId) {
+      showScreen('game-screen');
+      const mySnap = await get(ref(db, `rooms/${roomId}/players/${state.uid}`));
+      if (!mySnap.exists()) return showScreen('lobby-screen');
+      state.myRole = mySnap.val().role;
+      renderMyRole();
+      onValue(ref(db, `rooms/${roomId}`),          handleRoomUpdate);
+      onValue(ref(db, `rooms/${roomId}/chat`),      handleChat);
+      onValue(ref(db, `rooms/${roomId}/deadChat`),  handleDeadChat);
+      if (state.myRole==='mafia'||state.myRole==='mafia_boss') {
+        onValue(ref(db, `rooms/${roomId}/mafiaChat`), handleMafiaChat);
+      }
+      onDisconnect(ref(db, `rooms/${roomId}/players/${state.uid}/connected`)).set(false);
+    }
+
+    function handleRoomUpdate(snap) {
+      if (!snap.exists()) return;
+      const room = snap.val();
+      state.players = room.players||{};
+      state.isHost  = room.host === state.uid;
+      const me = state.players[state.uid];
+
+      // 강퇴 감지
+      if (me?.kicked) { handleKicked(); return; }
+
+      // 사망자 채팅
+      if (me && !me.alive) {
+        document.getElementById('deadChatSection').classList.remove('hidden');
+        document.getElementById('chatInput').disabled    = true;
+        document.getElementById('sendMsg').disabled      = true;
+        document.getElementById('chatInput').placeholder = '사망자는 일반 채팅을 할 수 없습니다.';
+      }
+
+      if (room.phase !== state.phase) {
+        state.phase = room.phase; state.hasVoted = false; state.hasActed = false;
+        handlePhaseChange(room);
+      }
+
+      renderPlayerGrid(room);
+      if (room.timer) updateTimer(room.timer);
+      if (room.phase === 'result' && room.result) showGameOver(room.result, room.players);
+    }
+
+    function handlePhaseChange(room) {
+      updatePhaseDisplay(room.phase, room.dayCount);
+      showPhaseBanner(room.phase, room.dayCount);
+      hideAllPanels();
+      switch (room.phase) {
+        case 'day':
+          showEventBanner(`☀️ ${room.dayCount}일차 낮이 밝았습니다! 마피아를 찾아내세요.`, 'warning', 4000);
+          scheduleTransition(room, 'vote'); break;
+        case 'vote':
+          showEventBanner(`🗳️ 투표 시간! 마피아로 의심되는 사람을 선택하세요.`, 'danger', 4000);
+          renderVotablePlayers(room);
+          scheduleTransition(room, 'processVote'); break;
+        case 'night':
+          showEventBanner(`🌙 밤이 되었습니다. 각자 역할을 수행하세요.`, 'night', 4000);
+          renderNightActions(room);
+          scheduleTransition(room, 'processNight');
+          if (state.myRole==='mafia'||state.myRole==='mafia_boss') {
+            document.getElementById('mafiaChatSection').classList.remove('hidden');
+          }
+          break;
+      }
+    }
+
+    function scheduleTransition(room, nextAction) {
+      const remaining = Math.max((room.timer?.endsAt||0) - Date.now(), 0);
+      const playerIds = Object.keys(state.players).sort();
+      if (playerIds[0] !== state.uid) return;
+      setTimeout(async () => {
+        const snap = await get(ref(db, `rooms/${state.roomId}`));
+        if (!snap.exists()) return;
+        const current = snap.val();
+        if (current.phase !== room.phase) return;
+        if (nextAction === 'vote')              await transitionToVote(current);
+        else if (nextAction === 'processVote')  await processVote(current);
+        else if (nextAction === 'processNight') await processNight(current);
+      }, remaining);
+    }
+
+    async function transitionToVote(room) {
+      const timers = room?.settings?.timers||gameSettings.timers;
+      await update(ref(db, `rooms/${state.roomId}`), {
+        phase:'vote', votes:null,
+        'timer/endsAt':Date.now()+timers.vote*1000, 'timer/duration':timers.vote, 'timer/phase':'vote',
+      });
+    }
+
+    async function processVote(room) {
+      const votes = room.votes||{};
+      const voteCount = {};
+      Object.values(votes).forEach(id => { voteCount[id] = (voteCount[id]||0)+1; });
+      const maxCount  = Math.max(...Object.values(voteCount), 0);
+      const maxVoters = Object.entries(voteCount).filter(([,c]) => c === maxCount);
+      let eliminatedId = maxVoters.length === 1 ?
+        maxVoters[0][0] : null;
+
+      const updates = {};
+      let winner = null;
+
+      if (eliminatedId && room.players[eliminatedId]) {
+        const el = room.players[eliminatedId];
+        updates[`rooms/${state.roomId}/players/${eliminatedId}/alive`] = false;
+
+        if (el.role === 'jester') {
+          winner = 'jester';
+          await push(ref(db, `rooms/${state.roomId}/chat`), {
+            type:'event-vote',
+            message:`💀 ${el.nickname}님이 투표로 추방되었습니다! 알고보니 광대였습니다! 🃏`,
+            timestamp:serverTimestamp(),
+          });
+        } else {
+          await push(ref(db, `rooms/${state.roomId}/chat`), {
+            type:'event-vote',
+            message:`💀 ${el.nickname}님이 투표로 추방되었습니다. (${roleInfo[el.role]?.name||el.role})`,
+            timestamp:serverTimestamp(),
+          });
+        }
+
+        // 사망자 채팅 입장 알림
+        await push(ref(db, `rooms/${state.roomId}/deadChat`), {
+          type:'system',
+          message:`👻 ${el.nickname}님이 저승에 도착했습니다.`,
+          timestamp:serverTimestamp(),
+        });
+
+      } else {
+        await push(ref(db, `rooms/${state.roomId}/chat`), {
+          type:'system',
+          message:'⚖️ 동률로 아무도 추방되지 않았습니다.',
+          timestamp:serverTimestamp(),
+        });
+      }
+
+      if (winner === 'jester') {
+        updates[`rooms/${state.roomId}/phase`]  = 'result';
+        updates[`rooms/${state.roomId}/result`] = { winner:'jester', message:'🃏 광대 승리!' };
+        return await update(ref(db), updates);
+      }
+
+      const updatedPlayers = { ...room.players };
+      if (eliminatedId) updatedPlayers[eliminatedId] = { ...updatedPlayers[eliminatedId], alive:false };
+      const winResult = checkWinCondition(updatedPlayers);
+
+      if (winResult) {
+        updates[`rooms/${state.roomId}/phase`]  = 'result';
+        updates[`rooms/${state.roomId}/result`] = {
+          winner:winResult,
+          message:winResult==='citizen' ? '🎉 시민팀 승리!' : '😈 마피아팀 승리!'
+        };
+      } else {
+        const timers = room.settings?.timers||gameSettings.timers;
+        updates[`rooms/${state.roomId}/phase`]        = 'night';
+        updates[`rooms/${state.roomId}/nightActions`] = { mafia:null, doctor:null, police:null };
+        updates[`rooms/${state.roomId}/timer`]        = {
+          endsAt:Date.now()+timers.night*1000,
+          duration:timers.night, phase:'night'
+        };
+      }
+      await update(ref(db), updates);
+    }
+
+    async function processNight(room) {
+      const { mafia, doctor } = room.nightActions||{};
+      const dbUpdates = {};
+
+      // 의사 보호 처리
+      if (doctor && room.players[doctor]) {
+        dbUpdates[`rooms/${state.roomId}/players/${doctor}/protected`] = true;
+      }
+
+      // 마피아 공격 처리
+      if (mafia && room.players[mafia]) {
+        const target = room.players[mafia];
+        if (target.protected) {
+          await push(ref(db, `rooms/${state.roomId}/chat`), {
+            type:'event-save',
+            message:`💊 ${target.nickname}님이 의사로부터 보호받았습니다! 마피아의 공격을 막아냈습니다.`,
+            timestamp:serverTimestamp(),
+          });
+        } else {
+          dbUpdates[`rooms/${state.roomId}/players/${mafia}/alive`] = false;
+          await push(ref(db, `rooms/${state.roomId}/chat`), {
+            type:'event-kill',
+            message:`💀 ${target.nickname}님이 밤에 마피아에게 살해당했습니다.`,
+            timestamp:serverTimestamp(),
+          });
+          await push(ref(db, `rooms/${state.roomId}/deadChat`), {
+            type:'system',
+            message:`👻 ${target.nickname}님이 저승에 도착했습니다.`,
+            timestamp:serverTimestamp(),
+          });
+        }
+      } else {
+        await push(ref(db, `rooms/${state.roomId}/chat`), {
+          type:'system',
+          message:'🌙 오늘 밤은 아무 일도 일어나지 않았습니다.',
+          timestamp:serverTimestamp(),
+        });
+      }
+
+      // 보호 해제
+      Object.keys(room.players).forEach(uid => {
+        dbUpdates[`rooms/${state.roomId}/players/${uid}/protected`] = false;
+      });
+
+      const updatedPlayers = { ...room.players };
+      if (mafia && !room.players[mafia]?.protected) {
+        updatedPlayers[mafia] = { ...updatedPlayers[mafia], alive:false };
+      }
+
+      const winResult = checkWinCondition(updatedPlayers);
+      if (winResult) {
+        dbUpdates[`rooms/${state.roomId}/phase`]  = 'result';
+        dbUpdates[`rooms/${state.roomId}/result`] = {
+          winner:winResult,
+          message:winResult==='citizen' ? '🎉 시민팀 승리!' : '😈 마피아팀 승리!'
+        };
+      } else {
+        const timers  = room.settings?.timers||gameSettings.timers;
+        const nextDay = (room.dayCount||1) + 1;
+        dbUpdates[`rooms/${state.roomId}/phase`]    = 'day';
+        dbUpdates[`rooms/${state.roomId}/dayCount`] = nextDay;
+        dbUpdates[`rooms/${state.roomId}/timer`]    = {
+          endsAt:Date.now()+timers.day*1000,
+          duration:timers.day, phase:'day'
+        };
+      }
+      await update(ref(db), dbUpdates);
+    }
+
+    function renderVotablePlayers(room) {
+      const alivePlayers = Object.entries(room.players).filter(([,p]) => p.alive);
+      document.querySelectorAll('.player-card').forEach(card => {
+        const uid    = card.dataset.uid;
+        const player = room.players[uid];
+        if (!player?.alive || uid === state.uid) return;
+        card.classList.add('votable');
+        card.onclick = async () => {
+          if (state.hasVoted) return;
+          state.hasVoted = true;
+          document.querySelectorAll('.player-card').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          await update(ref(db, `rooms/${state.roomId}/votes`), { [state.uid]: uid });
+          showNotification(`${player.nickname}에게 투표했습니다! 🗳️`);
+          const playerIds = Object.keys(state.players).sort();
+          if (playerIds[0] === state.uid) {
+            const votesSnap = await get(ref(db, `rooms/${state.roomId}/votes`));
+            const voteCount = votesSnap.exists() ? Object.keys(votesSnap.val()).length : 0;
+            if (voteCount >= alivePlayers.length) {
+              const roomSnap = await get(ref(db, `rooms/${state.roomId}`));
+              await processVote(roomSnap.val());
+            }
+          }
+        };
+      });
+    }
+
+    function renderNightActions(room) {
+      const me = room.players[state.uid];
+      if (!me?.alive) return;
+      const panel      = document.getElementById('nightPanel');
+      const title      = document.getElementById('nightActionTitle');
+      const hint       = document.getElementById('actionHint');
+      const targetList = document.getElementById('nightTargets');
+      const alive      = Object.entries(room.players).filter(([,p]) => p.alive);
+      let targets = [], actionType = '';
+
+      if (state.myRole==='mafia'||state.myRole==='mafia_boss') {
+        actionType = 'kill';
+        title.textContent = '🔫 제거할 대상을 선택하세요';
+        hint.textContent  = '마피아 팀원을 제외한 플레이어를 선택할 수 있습니다.';
+        targets = alive.filter(([,p]) => p.role!=='mafia'&&p.role!=='mafia_boss');
+      } else if (state.myRole==='doctor') {
+        actionType = 'protect';
+        title.textContent = '💊 보호할 대상을 선택하세요';
+        hint.textContent  = '오늘 밤 마피아의 공격으로부터 보호합니다.';
+        targets = alive;
+      } else if (state.myRole==='police') {
+        actionType = 'investigate';
+        title.textContent = '🔍 조사할 대상을 선택하세요';
+        hint.textContent  = '마피아 보스는 시민으로 위장합니다.';
+        targets = alive.filter(([uid]) => uid !== state.uid);
+      } else { return; }
+
+      panel.classList.remove('hidden');
+      targetList.innerHTML = targets.map(([uid, p]) =>
+        `<button class="target-btn" data-uid="${uid}" data-action="${actionType}">${p.nickname}</button>`
+      ).join('');
+
+      targetList.querySelectorAll('.target-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (state.hasActed) return;
+          state.hasActed = true;
+          targetList.querySelectorAll('.target-btn').forEach(b => b.disabled = true);
+          btn.classList.add('confirmed');
+          btn.textContent += ' ✓';
+          await performNightAction(btn.dataset.action, btn.dataset.uid, room);
+        });
+      });
+    }
+
+    async function performNightAction(action, targetUid, room) {
+      const updates = {};
+      if (action === 'kill') {
+        updates[`rooms/${state.roomId}/nightActions/mafia`] = targetUid;
+      } else if (action === 'protect') {
+        updates[`rooms/${state.roomId}/nightActions/doctor`] = targetUid;
+      } else if (action === 'investigate') {
+        updates[`rooms/${state.roomId}/nightActions/police`] = targetUid;
+        const target  = room.players[targetUid];
+        const isMafia = target.role === 'mafia';
+        showInvestigateResult(target.nickname, isMafia);
+      }
+      await update(ref(db), updates);
+      showNotification('행동이 완료되었습니다! ✅');
+
+      const playerIds = Object.keys(state.players).sort();
+      if (playerIds[0] === state.uid) {
+        setTimeout(async () => {
+          const snap = await get(ref(db, `rooms/${state.roomId}`));
+          if (!snap.exists()) return;
+          const current = snap.val();
+          if (current.phase !== 'night') return;
+          if (isNightActionsComplete(current)) await processNight(current);
+        }, 500);
+      }
+    }
+
+    function isNightActionsComplete(room) {
+      const players = room.players||{};
+      const actions = room.nightActions||{};
+      const hasMafia  = Object.values(players).some(p => p.alive&&(p.role==='mafia'||p.role==='mafia_boss'));
+      const hasDoctor = Object.values(players).some(p => p.alive&&p.role==='doctor');
+      const hasPolice = Object.values(players).some(p => p.alive&&p.role==='police');
+      return (!hasMafia||actions.mafia) && (!hasDoctor||actions.doctor) && (!hasPolice||actions.police);
+    }
+
+    function renderPlayerGrid(room) {
+      document.getElementById('playerGrid').innerHTML =
+        Object.entries(room.players||{}).map(([uid, p]) =>
+          `<div class="player-card ${!p.alive?'dead':''} ${uid===state.uid?'me':''}" data-uid="${uid}">
+            <div class="player-avatar">${!p.alive?'💀':'🧑'}</div>
+            <div class="player-name">${p.nickname}</div>
+            ${uid===state.uid?'<div class="me-tag">나</div>':''}
+          </div>`
+        ).join('');
+    }
+
+    // ── 채팅 핸들러 ──────────────────────────────────────────
+
+    function handleChat(snap) {
+      if (!snap.exists()) return;
+      snap.forEach(child => {
+        if (renderedMsgIds.has(child.key)) return;
+        renderedMsgIds.add(child.key);
+        const msg = child.val();
+        const box = document.getElementById('chatBox');
+        const div = document.createElement('div');
+
+        if (msg.type === 'event-kill') {
+          div.className   = 'chat-msg event-kill';
+          div.textContent = msg.message;
+          showEventBanner(msg.message, 'danger', 5000);
+        } else if (msg.type === 'event-save') {
+          div.className   = 'chat-msg event-save';
+          div.textContent = msg.message;
+          showEventBanner(msg.message, 'success', 5000);
+        } else if (msg.type === 'event-vote') {
+          div.className   = 'chat-msg event-vote';
+          div.textContent = msg.message;
+          showEventBanner(msg.message, 'danger', 5000);
+        } else if (msg.type === 'system') {
+          div.className   = 'chat-msg system';
+          div.textContent = `📢 ${msg.message}`;
+        } else if (msg.isGM) {
+          div.className = 'chat-msg gm-msg';
+          div.innerHTML = `<span class="sender">[GM] ${msg.sender}</span>: ${msg.message}`;
+        } else {
+          div.className = 'chat-msg';
+          div.innerHTML = `<span class="sender">${msg.sender}</span>: ${msg.message}`;
+        }
+
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+      });
+    }
+
+    function handleMafiaChat(snap) {
+      if (!snap.exists()) return;
+      snap.forEach(child => {
+        if (renderedMafiaMsgIds.has(child.key)) return;
+        renderedMafiaMsgIds.add(child.key);
+        const msg = child.val();
+        const box = document.getElementById('mafiaChatBox');
+        const div = document.createElement('div');
+        div.className = 'chat-msg';
+        div.innerHTML = `<span class="sender" style="color:#ff4444">${msg.sender}</span>: ${msg.message}`;
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+      });
+    }
+
+    function handleDeadChat(snap) {
+      if (!snap.exists()) return;
+      snap.forEach(child => {
+        if (renderedDeadMsgIds.has(child.key)) return;
+        renderedDeadMsgIds.add(child.key);
+        const msg = child.val();
+        const box = document.getElementById('deadChatBox');
+        const div = document.createElement('div');
+        if (msg.type === 'system') {
+          div.className   = 'chat-msg system';
+          div.textContent = `📢 ${msg.message}`;
+        } else {
+          div.className = 'chat-msg dead-msg';
+          div.innerHTML = `<span class="sender">👻 ${msg.sender}</span>: ${msg.message}`;
+        }
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+      });
+    }
+
+    // ── 채팅 전송 ────────────────────────────────────────────
+
+    document.getElementById('sendMsg').addEventListener('click', sendChat);
+    document.getElementById('chatInput').addEventListener('keypress', e => {
+      if (e.key === 'Enter') sendChat();
+    });
+    async function sendChat() {
+      const input = document.getElementById('chatInput');
+      const msg   = input.value.trim();
+      if (!msg) return;
+      if (state.phase === 'night') return showNotification('밤에는 채팅할 수 없습니다.');
+      const me = state.players[state.uid];
+      if (!me?.alive) return showNotification('사망자는 일반 채팅을 할 수 없습니다.');
+      await push(ref(db, `rooms/${state.roomId}/chat`), {
+        sender:state.nickname, message:msg, timestamp:serverTimestamp(),
+      });
+      input.value = '';
+    }
+
+    document.getElementById('sendMafiaMsg').addEventListener('click', sendMafiaChat);
+    document.getElementById('mafiaChatInput').addEventListener('keypress', e => {
+      if (e.key === 'Enter') sendMafiaChat();
+    });
+    async function sendMafiaChat() {
+      const input = document.getElementById('mafiaChatInput');
+      const msg   = input.value.trim();
+      if (!msg) return;
+      await push(ref(db, `rooms/${state.roomId}/mafiaChat`), {
+        sender:state.nickname, message:msg, timestamp:serverTimestamp(),
+      });
+      input.value = '';
+    }
+
+    document.getElementById('sendDeadMsg').addEventListener('click', sendDeadChat);
+    document.getElementById('deadChatInput').addEventListener('keypress', e => {
+      if (e.key === 'Enter') sendDeadChat();
+    });
+    async function sendDeadChat() {
+      const input = document.getElementById('deadChatInput');
+      const msg   = input.value.trim();
+      if (!msg) return;
+      const me = state.players[state.uid];
+      if (me?.alive) return showNotification('살아있는 플레이어는 사망자 채팅을 할 수 없습니다.');
+      await push(ref(db, `rooms/${state.roomId}/deadChat`), {
+        sender:state.nickname, message:msg, timestamp:serverTimestamp(),
+      });
+      input.value = '';
+    }
+
+    // ── 게임 오버 ────────────────────────────────────────────
+
+    function showGameOver(result, players) {
+      const modal = document.getElementById('gameOverModal');
+      if (!modal.classList.contains('hidden')) return;
+      const emojis = { citizen:'🎉', mafia:'😈', jester:'🃏', none:'🛑' };
+      const titles = { citizen:'시민 승리!', mafia:'마피아 승리!', jester:'광대 승리!', none:'게임 종료' };
+      document.getElementById('gameOverEmoji').textContent   = emojis[result.winner]||'🎭';
+      document.getElementById('gameOverTitle').textContent   = titles[result.winner]||'게임 종료';
+      document.getElementById('gameOverMessage').textContent = result.message;
+      document.getElementById('finalPlayerList').innerHTML   =
+        Object.values(players).map(p => {
+          const info = roleInfo[p.role]||{ name:p.role, cls:'' };
+          return `<div class="final-player-row">
+            <span>${p.alive?'✅':'💀'} ${p.nickname}</span>
+            <span class="${info.cls}">${info.name}</span>
+          </div>`;
+        }).join('');
+      modal.classList.remove('hidden');
+    }
+
+    document.getElementById('backToLobby').addEventListener('click', () => {
+      sessionStorage.clear(); showScreen('lobby-screen');
+    });
+
+    // ── 내 역할 렌더링 ───────────────────────────────────────
+
+    function renderMyRole() {
+      const info = roleInfo[state.myRole];
+      if (!info) return;
+      document.getElementById('myRoleName').textContent = info.name;
+      document.getElementById('myRoleName').className   = `role-name ${info.cls}`;
+      document.getElementById('myRoleDesc').textContent = info.desc;
+      if (state.myRole==='mafia'||state.myRole==='mafia_boss') {
+        get(ref(db, `rooms/${state.roomId}/players`)).then(snap => {
+          if (!snap.exists()) return;
+          const team = Object.values(snap.val())
+            .filter(p => p.role==='mafia'||p.role==='mafia_boss')
+            .map(p => p.nickname);
+          const el = document.getElementById('mafiaTeamInfo');
+          el.textContent = `🔴 마피아 팀: ${team.join(', ')}`;
+          el.classList.remove('hidden');
+        });
+      }
+    }
+
+    // ── 유틸 ─────────────────────────────────────────────────
+
+    function updatePhaseDisplay(phase, dayCount) {
+      const names = { day:'☀️ 낮', night:'🌙 밤', vote:'🗳️ 투표', result:'📋 결과' };
+      const el    = document.getElementById('phaseDisplay');
+      el.textContent = names[phase]||phase;
+      el.className   = `phase-badge phase-${phase}`;
+      document.getElementById('dayDisplay').textContent = `${dayCount}일차`;
+    }
+
+    function updateTimer(timer) {
+      clearInterval(state.timerInterval);
+      const el = document.getElementById('timerDisplay');
+      state.timerInterval = setInterval(() => {
+        const remaining = Math.max(0, Math.ceil((timer.endsAt - Date.now()) / 1000));
+        el.textContent = remaining;
+        el.className   = remaining <= 5 ? 'timer urgent' : 'timer';
+        if (remaining <= 0) clearInterval(state.timerInterval);
+      }, 500);
+    }
+
+    function hideAllPanels() {
+      document.getElementById('nightPanel').classList.add('hidden');
+      document.getElementById('investigateResult').classList.add('hidden');
+      document.getElementById('mafiaChatSection').classList.add('hidden');
+    }
+
+    function showInvestigateResult(nickname, isMafia) {
+      const el = document.getElementById('investigateResult');
+      el.classList.remove('hidden');
+      document.getElementById('investigateText').textContent = isMafia
+        ? `🔴 ${nickname}님은 마피아입니다!`
+        : `🔵 ${nickname}님은 마피아가 아닙니다.`;
+      el.style.borderColor = isMafia ? '#e74c3c' : '#3498db';
+      showEventBanner(
+        isMafia ? `🔴 ${nickname}님은 마피아입니다!` : `🔵 ${nickname}님은 마피아가 아닙니다.`,
+        isMafia ? 'danger' : 'info', 5000
+      );
+    }
+
+    function assignRolesFromSettings(playerCount, roleCounts) {
+      const roles = [];
+      Object.entries(roleCounts).forEach(([role, count]) => {
+        for (let i = 0; i < count; i++) roles.push(role);
+      });
+      while (roles.length < playerCount) roles.push('citizen');
+      return roles.slice(0, playerCount).sort(() => Math.random() - 0.5);
+    }
+
+    function checkWinCondition(players) {
+      const alive  = Object.values(players).filter(p => p.alive);
+      const mafia  = alive.filter(p => p.role==='mafia'||p.role==='mafia_boss');
+      const others = alive.filter(p => p.role!=='mafia'&&p.role!=='mafia_boss');
+      if (mafia.length === 0) return 'citizen';
+      if (mafia.length >= others.length) return 'mafia';
+      return null;
+    }
+
+    function generateRoomId() {
+      return Math.random().toString(36).substr(2, 6).toUpperCase();
+    }
+
+    function getNickname() {
+      const val = document.getElementById('nickname').value.trim();
+      if (!val) { showNotification('닉네임을 입력하세요!'); return null; }
+      return val;
+    }
+
+    function showLoading(show) {
+      document.getElementById('loading').classList.toggle('hidden', !show);
+    }
+
+    function showNotification(msg, duration=2500) {
+      const el = document.getElementById('notification');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), duration);
+    }
+
+    init();
+  </script>
+</body>
+</html>
