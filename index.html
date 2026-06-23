@@ -535,7 +535,7 @@
       <div class="section-card gm-panel">
         <h3>🎮 진행자 컨트롤</h3>
         <div class="gm-controls">
-          <button id="gmSkipTimer"  class="btn btn-warning btn-small">⏩ 타이머 스킵</button>
+          <button id="gmAdvancePhase"  class="btn btn-warning btn-small">⏭️ 다음 단계 진행</button>
           <button id="gmForceDay"   class="btn btn-gm btn-small">☀️ 낮 강제 전환</button>
           <button id="gmForceVote"  class="btn btn-gm btn-small">🗳️ 투표 강제 전환</button>
           <button id="gmForceNight" class="btn btn-gm btn-small">🌙 밤 강제 전환</button>
@@ -1610,9 +1610,40 @@
       if (e.key === 'Enter') document.getElementById('gmSendNotice').click();
     });
 
-    document.getElementById('gmSkipTimer').addEventListener('click', async () => {
-      await update(ref(db, `rooms/${state.roomId}/timer`), { endsAt:Date.now()+1000 });
-      showNotification('⏩ 타이머를 스킵했습니다!');
+    document.getElementById('gmAdvancePhase').addEventListener('click', async () => {
+      const snap = await get(ref(db, `rooms/${state.roomId}`));
+      if (!snap.exists()) return;
+      const room = snap.val();
+
+      if (!isTimerFinished(room.timer)) {
+        showNotification('⏳ 아직 타이머가 끝나지 않았습니다.');
+        return;
+      }
+
+      if (room.phase === 'day') {
+        await transitionToVote(room);
+        await push(ref(db, `rooms/${state.roomId}/chat`), {
+          type:'system',
+          message:'[진행자] ⏭️ 낮 종료 후 투표 단계로 진행했습니다.',
+          timestamp:serverTimestamp(),
+        });
+      } else if (room.phase === 'vote') {
+        await processVote(room);
+        await push(ref(db, `rooms/${state.roomId}/chat`), {
+          type:'system',
+          message:'[진행자] ⏭️ 투표를 마감하고 결과를 진행했습니다.',
+          timestamp:serverTimestamp(),
+        });
+      } else if (room.phase === 'night') {
+        await processNight(room);
+        await push(ref(db, `rooms/${state.roomId}/chat`), {
+          type:'system',
+          message:'[진행자] ⏭️ 밤 행동을 마감하고 다음 단계로 진행했습니다.',
+          timestamp:serverTimestamp(),
+        });
+      } else {
+        showNotification('현재 단계에서는 진행할 수 없습니다.');
+      }
     });
     document.getElementById('gmForceDay').addEventListener('click', async () => {
       const snap = await get(ref(db, `rooms/${state.roomId}`));
@@ -1706,12 +1737,17 @@
         document.getElementById('chatInput').placeholder = '사망자는 일반 채팅을 할 수 없습니다.';
       }
 
-      if (room.phase !== state.phase) {
+      const phaseChanged = room.phase !== state.phase;
+      if (phaseChanged) {
         state.phase = room.phase; state.hasVoted = false; state.hasActed = false;
-        handlePhaseChange(room);
       }
 
       renderPlayerGrid(room);
+      if (phaseChanged) {
+        handlePhaseChange(room);
+      } else if (room.phase === 'vote') {
+        renderVotablePlayers(room);
+      }
       if (room.timer) updateTimer(room.timer);
       if (room.phase === 'result' && room.result) showGameOver(room.result, room.players);
     }
@@ -1723,15 +1759,14 @@
       switch (room.phase) {
         case 'day':
           showEventBanner(`☀️ ${room.dayCount}일차 낮이 밝았습니다! 마피아를 찾아내세요.`, 'warning', 4000);
-          scheduleTransition(room, 'vote'); break;
+          break;
         case 'vote':
           showEventBanner(`🗳️ 투표 시간! 마피아로 의심되는 사람을 선택하세요.`, 'danger', 4000);
           renderVotablePlayers(room);
-          scheduleTransition(room, 'processVote'); break;
+          break;
         case 'night':
           showEventBanner(`🌙 밤이 되었습니다. 각자 역할을 수행하세요.`, 'night', 4000);
           renderNightActions(room);
-          scheduleTransition(room, 'processNight');
           if (state.myRole==='mafia'||state.myRole==='mafia_boss') {
             document.getElementById('mafiaChatSection').classList.remove('hidden');
           }
@@ -1739,19 +1774,9 @@
       }
     }
 
-    function scheduleTransition(room, nextAction) {
-      const remaining = Math.max((room.timer?.endsAt||0) - Date.now(), 0);
-      const playerIds = Object.keys(state.players).sort();
-      if (playerIds[0] !== state.uid) return;
-      setTimeout(async () => {
-        const snap = await get(ref(db, `rooms/${state.roomId}`));
-        if (!snap.exists()) return;
-        const current = snap.val();
-        if (current.phase !== room.phase) return;
-        if (nextAction === 'vote')              await transitionToVote(current);
-        else if (nextAction === 'processVote')  await processVote(current);
-        else if (nextAction === 'processNight') await processNight(current);
-      }, remaining);
+    function isTimerFinished(timer) {
+      if (!timer?.endsAt) return false;
+      return Date.now() >= timer.endsAt;
     }
 
     async function transitionToVote(room) {
@@ -1839,16 +1864,14 @@
     async function processNight(room) {
       const { mafia, doctor } = room.nightActions||{};
       const dbUpdates = {};
-
-      // 의사 보호 처리
-      if (doctor && room.players[doctor]) {
-        dbUpdates[`rooms/${state.roomId}/players/${doctor}/protected`] = true;
-      }
+      const protectedId = (doctor && room.players[doctor]?.alive) ? doctor : null;
 
       // 마피아 공격 처리
       if (mafia && room.players[mafia]) {
         const target = room.players[mafia];
-        if (target.protected) {
+        const isProtected = protectedId === mafia;
+
+        if (isProtected) {
           await push(ref(db, `rooms/${state.roomId}/chat`), {
             type:'event-save',
             message:`💊 ${target.nickname}님이 의사로부터 보호받았습니다! 마피아의 공격을 막아냈습니다.`,
@@ -1875,14 +1898,12 @@
         });
       }
 
-      // 보호 해제
-      Object.keys(room.players).forEach(uid => {
-        dbUpdates[`rooms/${state.roomId}/players/${uid}/protected`] = false;
-      });
-
       const updatedPlayers = { ...room.players };
-      if (mafia && !room.players[mafia]?.protected) {
-        updatedPlayers[mafia] = { ...updatedPlayers[mafia], alive:false };
+      if (mafia && room.players[mafia]) {
+        const isProtected = protectedId === mafia;
+        if (!isProtected) {
+          updatedPlayers[mafia] = { ...updatedPlayers[mafia], alive:false };
+        }
       }
 
       const winResult = checkWinCondition(updatedPlayers);
@@ -1919,15 +1940,6 @@
           card.classList.add('selected');
           await update(ref(db, `rooms/${state.roomId}/votes`), { [state.uid]: uid });
           showNotification(`${player.nickname}에게 투표했습니다! 🗳️`);
-          const playerIds = Object.keys(state.players).sort();
-          if (playerIds[0] === state.uid) {
-            const votesSnap = await get(ref(db, `rooms/${state.roomId}/votes`));
-            const voteCount = votesSnap.exists() ? Object.keys(votesSnap.val()).length : 0;
-            if (voteCount >= alivePlayers.length) {
-              const roomSnap = await get(ref(db, `rooms/${state.roomId}`));
-              await processVote(roomSnap.val());
-            }
-          }
         };
       });
     }
