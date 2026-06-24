@@ -690,6 +690,7 @@
       isHost:false, isGM:false, soloMode:false,
       players:{}, timerInterval:null, aiActionTimer:null, aiActionKey:null,
       hasVoted:false, hasActed:false,
+      listeners:[], transitionTimer:null, transitionKey:null,
     };
 
     const renderedMsgIds      = new Set();
@@ -703,6 +704,60 @@
 
     function isRoomController(room) {
       return room?.host === state.uid;
+    }
+
+    function cleanupRoomSubscriptions() {
+      state.listeners.forEach(unsub => {
+        try { if (typeof unsub === 'function') unsub(); } catch (e) {}
+      });
+      state.listeners = [];
+      clearTimeout(state.transitionTimer);
+      state.transitionTimer = null;
+      state.transitionKey = null;
+      clearInterval(state.timerInterval);
+    }
+
+    function subscribeRoomValue(path, handler) {
+      const unsub = onValue(ref(db, path), handler);
+      state.listeners.push(unsub);
+      return unsub;
+    }
+
+    function getPlayerActionStatus(room, uid, player) {
+      if (!player?.alive) return '';
+      if (room.phase === 'vote') {
+        return room.votes?.[uid]
+          ? '<div class="me-tag" style="background:#1a6b3c;">투표완료</div>'
+          : '<div class="me-tag" style="background:#8a5a0e;">미투표</div>';
+      }
+      if (room.phase === 'night') {
+        const actions = room.nightActions || {};
+        const acted =
+          ((player.role === 'mafia' || player.role === 'mafia_boss') && !!actions.mafia) ||
+          (player.role === 'doctor' && !!actions.doctor) ||
+          (player.role === 'police' && !!actions.police);
+        if (player.role === 'mafia' || player.role === 'mafia_boss' || player.role === 'doctor' || player.role === 'police') {
+          return acted
+            ? '<div class="me-tag" style="background:#1a6b3c;">행동완료</div>'
+            : '<div class="me-tag" style="background:#8a5a0e;">대기중</div>';
+        }
+      }
+      return '';
+    }
+
+    function schedulePhaseTransitionForRoom(room) {
+      if (!room?.timer?.endsAt) return;
+      if (room.phase === 'day') {
+        scheduleTransition(room, 'vote');
+      } else if (room.phase === 'vote') {
+        scheduleTransition(room, 'processVote');
+      } else if (room.phase === 'night') {
+        scheduleTransition(room, 'processNight');
+      } else {
+        clearTimeout(state.transitionTimer);
+        state.transitionTimer = null;
+        state.transitionKey = null;
+      }
     }
 
     function roomPlayersToAIArray(players) {
@@ -886,6 +941,26 @@
       const roles = getTestRoles(count);
       if (!roles) return showNotification('역할 합계가 AI 인원과 맞지 않습니다!');
       startTestMode(count, roles, parseInt(document.getElementById('testSpeed').value));
+    });
+
+    document.getElementById('startSoloMode').addEventListener('click', async () => {
+      const nickname = getNickname();
+      if (!nickname) {
+        const nickInput = document.getElementById('nickname');
+        if (nickInput) nickInput.focus();
+        return;
+      }
+      const count = parseInt(document.getElementById('soloAiCount').value, 10);
+      if (Number.isNaN(count) || count < 3 || count > 11) {
+        return showNotification('AI 플레이어 수는 3~11명이어야 합니다.');
+      }
+      await createSoloRoom(count);
+    });
+
+    document.getElementById('soloAiCount').addEventListener('keydown', async (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      document.getElementById('startSoloMode').click();
     });
 
     function getTestRoles(count) {
@@ -1422,7 +1497,7 @@
         sessionStorage.clear();
         state.roomId = null; state.nickname = null; state.isGM = false; state.soloMode = false;
         state.myRole = null; state.phase = null; state.players = {};
-        clearInterval(state.timerInterval);
+        cleanupRoomSubscriptions();
         clearTimeout(state.aiActionTimer);
         state.aiActionKey = null;
         showScreen('lobby-screen');
@@ -1486,9 +1561,10 @@
     //  대기실
     // ════════════════════════════════════════════════════════
     function enterWaitingRoom(roomId) {
+      cleanupRoomSubscriptions();
       showScreen('waiting-screen');
       document.getElementById('roomCodeDisplay').textContent = roomId;
-      onValue(ref(db, `rooms/${roomId}`), snap => {
+      subscribeRoomValue(`rooms/${roomId}`, snap => {
         if (!snap.exists()) return;
         const room    = snap.val();
         const players = room.players ? Object.entries(room.players) : [];
@@ -1580,22 +1656,29 @@
     //  GM 화면
     // ════════════════════════════════════════════════════════
     function enterGMScreen(roomId) {
+      cleanupRoomSubscriptions();
       showScreen('gm-screen');
-      onValue(ref(db, `rooms/${roomId}`), handleGMRoomUpdate);
-      onValue(ref(db, `rooms/${roomId}/chat`), handleGMChat);
+      subscribeRoomValue(`rooms/${roomId}`, handleGMRoomUpdate);
+      subscribeRoomValue(`rooms/${roomId}/chat`, handleGMChat);
     }
 
     function handleGMRoomUpdate(snap) {
       if (!snap.exists()) return;
       const room = snap.val();
+      const phaseChanged = room.phase !== state.phase;
       state.players = room.players||{};
       state.phase   = room.phase;
+      if (phaseChanged) {
+        state.hasVoted = false;
+        state.hasActed = false;
+      }
       updateGMPhaseDisplay(room.phase, room.dayCount);
       if (room.timer) updateGMTimer(room.timer);
       renderGMPlayerGrid(room);
       renderGMVoteBoard(room);
       renderGMNightBoard(room);
       renderGMKickList(room);
+      schedulePhaseTransitionForRoom(room);
       if (room.phase === 'result' && room.result) showGMGameOver(room.result, room.players);
     }
 
@@ -1639,8 +1722,14 @@
     function renderGMVoteBoard(room) {
       const votes   = room.votes||{};
       const players = room.players||{};
+      const alivePlayers = Object.entries(players).filter(([,p]) => p.alive);
+      const votedNames = alivePlayers.filter(([uid]) => !!votes[uid]).map(([,p]) => p.nickname);
+      const pendingNames = alivePlayers.filter(([uid]) => !votes[uid]).map(([,p]) => p.nickname);
+
       if (Object.keys(votes).length === 0) {
-        document.getElementById('gmVoteBoard').innerHTML = '<div style="color:#a8b2d8;text-align:center;">아직 투표 없음</div>';
+        document.getElementById('gmVoteBoard').innerHTML =
+          `<div style="color:#a8b2d8;text-align:center;">아직 투표 없음</div>
+           <div style="margin-top:10px;font-size:0.85rem;color:#ffd166;">미투표: ${pendingNames.join(', ') || '없음'}</div>`;
         return;
       }
       const voteCount = {}, voterMap = {};
@@ -1657,7 +1746,9 @@
             <span style="color:#a8b2d8;font-size:0.8rem;">${voterMap[targetId].join(', ')}</span>
             <span style="color:#e94560;font-weight:bold;">${count}표</span>
           </div>`;
-        }).join('');
+        }).join('') +
+        `<div style="margin-top:10px;font-size:0.85rem;color:#64ffda;">투표완료: ${votedNames.join(', ') || '없음'}</div>
+         <div style="margin-top:6px;font-size:0.85rem;color:#ffd166;">미투표: ${pendingNames.join(', ') || '없음'}</div>`;
     }
 
     function renderGMNightBoard(room) {
@@ -1802,6 +1893,7 @@
     //  플레이어 게임 화면
     // ════════════════════════════════════════════════════════
     async function enterGameScreen(roomId) {
+      cleanupRoomSubscriptions();
       showScreen('game-screen');
       const roomSnap = await get(ref(db, `rooms/${roomId}`));
       if (!roomSnap.exists()) return showScreen('lobby-screen');
@@ -1810,11 +1902,11 @@
       if (!mySnap.exists()) return showScreen('lobby-screen');
       state.myRole = mySnap.val().role;
       renderMyRole();
-      onValue(ref(db, `rooms/${roomId}`),          handleRoomUpdate);
-      onValue(ref(db, `rooms/${roomId}/chat`),      handleChat);
-      onValue(ref(db, `rooms/${roomId}/deadChat`),  handleDeadChat);
+      subscribeRoomValue(`rooms/${roomId}`, handleRoomUpdate);
+      subscribeRoomValue(`rooms/${roomId}/chat`, handleChat);
+      subscribeRoomValue(`rooms/${roomId}/deadChat`, handleDeadChat);
       if (state.myRole==='mafia'||state.myRole==='mafia_boss') {
-        onValue(ref(db, `rooms/${roomId}/mafiaChat`), handleMafiaChat);
+        subscribeRoomValue(`rooms/${roomId}/mafiaChat`, handleMafiaChat);
       }
       onDisconnect(ref(db, `rooms/${roomId}/players/${state.uid}/connected`)).set(false);
     }
@@ -1837,13 +1929,27 @@
         document.getElementById('chatInput').placeholder = '사망자는 일반 채팅을 할 수 없습니다.';
       }
 
-      if (room.phase !== state.phase) {
-        state.phase = room.phase; state.hasVoted = false; state.hasActed = false;
-        handlePhaseChange(room);
+      const phaseChanged = room.phase !== state.phase;
+      if (phaseChanged) {
+        state.phase = room.phase;
+        state.hasVoted = false;
+        state.hasActed = false;
       }
 
       renderPlayerGrid(room);
+
+      if (phaseChanged) {
+        handlePhaseChange(room);
+      }
+
+      if (room.phase === 'vote') {
+        renderVotablePlayers(room);
+      } else if (room.phase === 'night') {
+        renderNightActions(room);
+      }
+
       if (room.timer) updateTimer(room.timer);
+      schedulePhaseTransitionForRoom(room);
       if (room.soloMode) queueSoloAIBehavior(room);
       if (room.phase === 'result' && room.result) showGameOver(room.result, room.players);
     }
@@ -1855,33 +1961,41 @@
       switch (room.phase) {
         case 'day':
           showEventBanner(`☀️ ${room.dayCount}일차 낮이 밝았습니다! 마피아를 찾아내세요.`, 'warning', 4000);
-          scheduleTransition(room, 'vote'); break;
+          break;
         case 'vote':
           showEventBanner(`🗳️ 투표 시간! 마피아로 의심되는 사람을 선택하세요.`, 'danger', 4000);
           renderVotablePlayers(room);
-          scheduleTransition(room, 'processVote'); break;
+          break;
         case 'night':
           showEventBanner(`🌙 밤이 되었습니다. 각자 역할을 수행하세요.`, 'night', 4000);
           renderNightActions(room);
-          scheduleTransition(room, 'processNight');
           if (state.myRole==='mafia'||state.myRole==='mafia_boss') {
             document.getElementById('mafiaChatSection').classList.remove('hidden');
           }
           break;
       }
+      schedulePhaseTransitionForRoom(room);
     }
 
     function scheduleTransition(room, nextAction) {
       const remaining = Math.max((room.timer?.endsAt||0) - Date.now(), 0);
       if (!isRoomController(room)) return;
-      setTimeout(async () => {
-        const snap = await get(ref(db, `rooms/${state.roomId}`));
-        if (!snap.exists()) return;
-        const current = snap.val();
-        if (current.phase !== room.phase) return;
-        if (nextAction === 'vote')              await transitionToVote(current);
-        else if (nextAction === 'processVote')  await processVote(current);
-        else if (nextAction === 'processNight') await processNight(current);
+      const transitionKey = `${room.phase}:${room.timer?.endsAt||0}:${nextAction}`;
+      if (state.transitionKey === transitionKey) return;
+      clearTimeout(state.transitionTimer);
+      state.transitionKey = transitionKey;
+      state.transitionTimer = setTimeout(async () => {
+        try {
+          const snap = await get(ref(db, `rooms/${state.roomId}`));
+          if (!snap.exists()) return;
+          const current = snap.val();
+          if (current.phase !== room.phase) return;
+          if (nextAction === 'vote')              await transitionToVote(current);
+          else if (nextAction === 'processVote')  await processVote(current);
+          else if (nextAction === 'processNight') await processNight(current);
+        } finally {
+          state.transitionTimer = null;
+        }
       }, remaining);
     }
 
@@ -1970,23 +2084,24 @@
     async function processNight(room) {
       const { mafia, doctor } = room.nightActions||{};
       const dbUpdates = {};
+      const mafiaTargetId = mafia && room.players[mafia]?.alive ? mafia : null;
+      const doctorTargetId = doctor && room.players[doctor]?.alive ? doctor : null;
+      const savedByDoctor = !!mafiaTargetId && mafiaTargetId === doctorTargetId;
 
-      // 의사 보호 처리
-      if (doctor && room.players[doctor]) {
-        dbUpdates[`rooms/${state.roomId}/players/${doctor}/protected`] = true;
+      if (doctorTargetId) {
+        dbUpdates[`rooms/${state.roomId}/players/${doctorTargetId}/protected`] = true;
       }
 
-      // 마피아 공격 처리
-      if (mafia && room.players[mafia]) {
-        const target = room.players[mafia];
-        if (target.protected) {
+      if (mafiaTargetId) {
+        const target = room.players[mafiaTargetId];
+        if (savedByDoctor) {
           await push(ref(db, `rooms/${state.roomId}/chat`), {
             type:'event-save',
             message:`💊 ${target.nickname}님이 의사로부터 보호받았습니다! 마피아의 공격을 막아냈습니다.`,
             timestamp:serverTimestamp(),
           });
         } else {
-          dbUpdates[`rooms/${state.roomId}/players/${mafia}/alive`] = false;
+          dbUpdates[`rooms/${state.roomId}/players/${mafiaTargetId}/alive`] = false;
           await push(ref(db, `rooms/${state.roomId}/chat`), {
             type:'event-kill',
             message:`💀 ${target.nickname}님이 밤에 마피아에게 살해당했습니다.`,
@@ -2006,14 +2121,13 @@
         });
       }
 
-      // 보호 해제
-      Object.keys(room.players).forEach(uid => {
+      Object.keys(room.players||{}).forEach(uid => {
         dbUpdates[`rooms/${state.roomId}/players/${uid}/protected`] = false;
       });
 
       const updatedPlayers = { ...room.players };
-      if (mafia && !room.players[mafia]?.protected) {
-        updatedPlayers[mafia] = { ...updatedPlayers[mafia], alive:false };
+      if (mafiaTargetId && !savedByDoctor) {
+        updatedPlayers[mafiaTargetId] = { ...updatedPlayers[mafiaTargetId], alive:false };
       }
 
       const winResult = checkWinCondition(updatedPlayers);
@@ -2028,21 +2142,35 @@
         const nextDay = (room.dayCount||1) + 1;
         dbUpdates[`rooms/${state.roomId}/phase`]    = 'day';
         dbUpdates[`rooms/${state.roomId}/dayCount`] = nextDay;
-        dbUpdates[`rooms/${state.roomId}/timer`]    = {
-          endsAt:Date.now()+timers.day*1000,
-          duration:timers.day, phase:'day'
-        };
+        dbUpdates[`rooms/${state.roomId}/votes`] = null;
+        dbUpdates[`rooms/${state.roomId}/nightActions`] = null;
+        dbUpdates[`rooms/${state.roomId}/timer/endsAt`] = Date.now()+timers.day*1000;
+        dbUpdates[`rooms/${state.roomId}/timer/duration`] = timers.day;
+        dbUpdates[`rooms/${state.roomId}/timer/phase`] = 'day';
       }
+
       await update(ref(db), dbUpdates);
     }
 
     function renderVotablePlayers(room) {
       const alivePlayers = Object.entries(room.players).filter(([,p]) => p.alive);
+      const myVote = room.votes?.[state.uid] || null;
+
       document.querySelectorAll('.player-card').forEach(card => {
         const uid    = card.dataset.uid;
         const player = room.players[uid];
+
+        card.onclick = null;
+        card.classList.remove('votable', 'selected');
+
         if (!player?.alive || uid === state.uid) return;
+
         card.classList.add('votable');
+        if (myVote === uid) {
+          card.classList.add('selected');
+          state.hasVoted = true;
+        }
+
         card.onclick = async () => {
           if (state.hasVoted) return;
           state.hasVoted = true;
@@ -2055,7 +2183,7 @@
             const voteCount = votesSnap.exists() ? Object.keys(votesSnap.val()).length : 0;
             if (voteCount >= alivePlayers.length) {
               const roomSnap = await get(ref(db, `rooms/${state.roomId}`));
-              await processVote(roomSnap.val());
+              if (roomSnap.exists()) await processVote(roomSnap.val());
             }
           }
         };
@@ -2147,7 +2275,10 @@
           `<div class="player-card ${!p.alive?'dead':''} ${uid===state.uid?'me':''}" data-uid="${uid}">
             <div class="player-avatar">${!p.alive?'💀':'🧑'}</div>
             <div class="player-name">${p.nickname}</div>
-            ${uid===state.uid?'<div class="me-tag">나</div>':(p.isAI?'<div class="me-tag" style="background:#0e6b8a;">AI</div>':'')}
+            <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+              ${uid===state.uid?'<div class="me-tag">나</div>':(p.isAI?'<div class="me-tag" style="background:#0e6b8a;">AI</div>':'')}
+              ${getPlayerActionStatus(room, uid, p)}
+            </div>
           </div>`
         ).join('');
     }
